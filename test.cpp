@@ -1,20 +1,37 @@
 #include <iostream>
-#include <pigpio.h>
+#include <opencv2/opencv.hpp>
+#include <chrono>
+
+using namespace cv;
 
 int main(int argc, char *argv[])
 {
-   if (gpioInitialise() < 0) {
-        std::cout << "GPIO Initialization failed" << std::endl;
-        return 1;
+    VideoCapture cap(0, cv::CAP_V4L2);
+    if (!cap.isOpened())
+    {
+        std::cerr << "Error opening video stream or file" << std::endl;
+        return -1;
     }
-    int pwmPin = 13;
-    gpioSetMode(pwmPin, PI_OUTPUT);
-    gpioSetPWMfrequency(pwmPin, 200);
-    gpioSetPWMrange(pwmPin, 40000);
-    for (int i = 10000; i <= 12000; i+=100) {
-        gpioPWM(pwmPin, i);
-        time_sleep(3);
-        std::cout << i << std::endl;
+    while (cap.isOpened())
+    {
+        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+        Mat frame;
+        cap >> frame;
+        if (frame.empty())
+        {
+            std::cerr << "Error frame empty" << std::endl;
+            break;
+        }
+        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+        std::cout << "获取图像延迟: " << time_span.count() * 1000 << "ms" << std::endl;
+        Mat gray;
+        cvtColor(frame, gray, COLOR_BGR2GRAY);
+        std::chrono::high_resolution_clock::time_point t3 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> time_span2 = std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2);
+        std::cout << "灰度转换延迟: " << time_span2.count() * 1000 << "ms" << std::endl;
+        // imshow("Frame", frame);
+        // if (waitKey(1) == 27)
+        //     break;
     }
-    gpioTerminate();
 }
