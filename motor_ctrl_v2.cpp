@@ -15,14 +15,11 @@ int size_y = 200;
 
 void moveforward(int pwm_pin) {
     sleep(2);
-    int i = 12400;
+    int i = 12300;
     while (true) {
-        // cout << "PWM值: " << i << endl;
         gpioPWM(pwm_pin, i);
-        // i -= 100;
-        // if (i < 11000) {
-        //     i = 12400;
-        // }
+        if (i != 12900) i += 100;
+        else cout << "启动！" << endl;
         sleep(3);
     }
 }
@@ -71,79 +68,93 @@ void pidControl(double center_cal, int servo_pin) {
 
     double angle = 90 - error_angle;
     angle = (angle - 90) * 2 + 90;
-    cout << "servo angle: " << angle << endl;
+    // cout << "servo angle: " << angle << endl;
     last_error = error;
     gpioPWM(servo_pin, angleToDutyCycle(angle));
     sleep(0.005);
     gpioPWM(servo_pin, angleToDutyCycle(angle));
 }
 
-Mat color_thresh(const Mat& image, int s_thresh[2], int l_thresh[2], int b_thresh[2], int v_thresh[2]) {
-    Mat luv, hls, hsv, lab;
-    cvtColor(image, luv, COLOR_RGB2Luv);
-    cvtColor(image, hls, COLOR_RGB2HLS);
-    cvtColor(image, hsv, COLOR_RGB2HSV);
-    cvtColor(image, lab, COLOR_RGB2Lab);
+Mat pipeline(const Mat& img, int s_thresh_min = 170, int s_thresh_max = 255, int sx_thresh_min = 40, int sx_thresh_max = 200) {
+    Mat img_copy;
+    img.copyTo(img_copy);
 
-    vector<Mat> luv_channels, hls_channels, hsv_channels, lab_channels;
-    split(luv, luv_channels);
-    split(hls, hls_channels);
-    split(hsv, hsv_channels);
-    split(lab, lab_channels);
+    // 1. 将图像转换为HLS色彩空间，并分离各个通道
+    Mat hls;
+    cvtColor(img_copy, hls, COLOR_BGR2HLS);
+    vector<Mat> channels;
+    split(hls, channels);
+    Mat h_channel = channels[0];
+    Mat l_channel = channels[1];
+    Mat s_channel = channels[2];
 
-    Mat s_channel = hsv_channels[1];
-    Mat l_channel = hls_channels[1];
-    Mat b_channel = lab_channels[2];
-    Mat v_channel = hsv_channels[2];
+    // 2. 利用Sobel计算x方向的梯度
+    Mat sobelx;
+    Sobel(l_channel, sobelx, CV_64F, 1, 0);
+    Mat abs_sobelx;
+    convertScaleAbs(sobelx, abs_sobelx);
 
-    Mat s_binary = Mat::zeros(s_channel.size(), CV_8UC1);
-    inRange(s_channel, Scalar(s_thresh[0]), Scalar(s_thresh[1]), s_binary);
-    // imshow("s_binary", s_binary);
+    // 将导数转换为8bit整数
+    Mat scaled_sobel;
+    double minVal, maxVal;
+    minMaxLoc(abs_sobelx, &minVal, &maxVal);
+    abs_sobelx.convertTo(scaled_sobel, CV_8U, 255.0 / maxVal);
 
-    Mat b_binary = Mat::zeros(b_channel.size(), CV_8UC1);
-    inRange(b_channel, Scalar(b_thresh[0]), Scalar(b_thresh[1]), b_binary);
-    // imshow("b_binary", b_binary);
+    Mat sxbinary = Mat::zeros(scaled_sobel.size(), CV_8U);
+    inRange(scaled_sobel, sx_thresh_min, sx_thresh_max, sxbinary);
 
-    Mat l_binary = Mat::zeros(l_channel.size(), CV_8UC1);
-    inRange(l_channel, Scalar(l_thresh[0]), Scalar(l_thresh[1]), l_binary);
-    // imshow("l_binary", l_binary);
+    // 3. 对s通道进行阈值处理
+    Mat s_binary = Mat::zeros(s_channel.size(), CV_8U);
+    inRange(s_channel, s_thresh_min, s_thresh_max, s_binary);
 
-    Mat v_binary = Mat::zeros(v_channel.size(), CV_8UC1);
-    inRange(v_channel, Scalar(v_thresh[0]), Scalar(v_thresh[1]), v_binary);
-    // imshow("v_binary", v_binary);
+    // 4. 将边缘检测的结果和颜色空间阈值的结果合并，并结合l通道的取值，确定车道提取的二值图结果
+    Mat color_binary = Mat::zeros(sxbinary.size(), CV_8U);
+    for (int i = 0; i < sxbinary.rows; i++) {
+        for (int j = 0; j < sxbinary.cols; j++) {
+            if ((sxbinary.at<uchar>(i, j) == 255 || s_binary.at<uchar>(i, j) == 255) && l_channel.at<uchar>(i, j) > 100) {
+                color_binary.at<uchar>(i, j) = 255;
+            }
+        }
+    }
 
-    Mat combined = Mat::zeros(s_channel.size(), CV_8UC1);
-    bitwise_and(s_binary, b_binary, combined);
-    bitwise_and(combined, l_binary, combined);
-    bitwise_and(combined, v_binary, combined);
+    return color_binary;
+}
 
-    return combined;
+Mat detectLanes(const Mat& img) {
+    Mat gray, blurred, edges;
+
+    // 1. 将图像转换为灰度图
+    cvtColor(img, gray, COLOR_BGR2GRAY);
+
+    // 2. 使用高斯模糊平滑图像
+    GaussianBlur(gray, blurred, Size(5, 5), 0);
+
+    // 3. 使用Canny边缘检测
+    Canny(blurred, edges, 50, 150);
+
+    // 4. 使用霍夫变换检测直线
+    vector<Vec4i> lines;
+    HoughLinesP(edges, lines, 1, CV_PI / 180, 50, 50, 10);
+
+    // 5. 绘制检测到的直线
+    Mat result;
+    cvtColor(edges, result, COLOR_GRAY2BGR);
+    for (size_t i = 0; i < lines.size(); i++) {
+        Vec4i l = lines[i];
+        line(result, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 0, 255), 2, LINE_AA);
+    }
+
+    return result;
 }
 
 void videoProcessing(int servo_pin) {
-    int s_thresh[2] = {41, 255};
-    int l_thresh[2] = {64, 147};
-    int b_thresh[2] = {0, 195};
-    int v_thresh[2] = {0, 255};
-    // namedWindow("trackbar", WINDOW_NORMAL);
-    // createTrackbar("s_min", "trackbar", &(s_thresh[0]), 255, nullptr);
-    // createTrackbar("s_max", "trackbar", &(s_thresh[1]), 255, nullptr);
-    // createTrackbar("l_min", "trackbar", &(l_thresh[0]), 255, nullptr);
-    // createTrackbar("l_max", "trackbar", &(l_thresh[1]), 255, nullptr);
-    // createTrackbar("b_min", "trackbar", &(b_thresh[0]), 255, nullptr);
-    // createTrackbar("b_max", "trackbar", &(b_thresh[1]), 255, nullptr);
-    // createTrackbar("v_min", "trackbar", &(v_thresh[0]), 255, nullptr);
-    // createTrackbar("v_max", "trackbar", &(v_thresh[1]), 255, nullptr);
-    // const string video_path = "/home/pi/5G_ws/output8.avi";
-    VideoCapture cap(0, CAP_V4L2);
+    const string video_path = "/home/pi/5G_ws/output8.avi";
+    VideoCapture cap(video_path);
+    // VideoCapture cap(0, CAP_V4L2);
     if (!cap.isOpened()) {
         cout << "视频打开失败" << endl;
         return;
     }
-
-    Mat mask = Mat::zeros(Size(size_x, size_y / 2), CV_8UC1);
-    vector<Point> points = {Point(size_x / 8, 0), Point(size_x * 7 / 8, 0), Point(size_x, size_y / 2), Point(0, size_y / 2)};
-    fillPoly(mask, vector<vector<Point>>{points}, Scalar(255));
 
     while (cap.isOpened()) {
         Mat frame;
@@ -151,98 +162,136 @@ void videoProcessing(int servo_pin) {
         if (frame.empty()) break;
         resize(frame, frame, Size(size_x, size_y));
         Mat roi = frame(Rect(0, size_y / 2, size_x, size_y / 2));
-        
-        // int s_thresh[2] = {getTrackbarPos("s_min", "trackbar"), getTrackbarPos("s_max", "trackbar")};
-        // int l_thresh[2] = {getTrackbarPos("l_min", "trackbar"), getTrackbarPos("l_max", "trackbar")};
-        // int b_thresh[2] = {getTrackbarPos("b_min", "trackbar"), getTrackbarPos("b_max", "trackbar")};
-        // int v_thresh[2] = {getTrackbarPos("v_min", "trackbar"), getTrackbarPos("v_max", "trackbar")};
 
-        Mat combined = color_thresh(roi, s_thresh, l_thresh, b_thresh, v_thresh);
         Mat binary;
-        bitwise_and(combined, mask, binary);
+        binary = pipeline(roi);
+        imshow("binary", binary);
 
-        cv::imshow("binary", binary);
-        vector<vector<Point>> contours;
-        findContours(binary, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-        
+        Mat kernel = getStructuringElement(MORPH_RECT, Size(35, 1));
+        Mat blackhatImg;
+        morphologyEx(binary, blackhatImg, MORPH_BLACKHAT, kernel);
+        imshow("blackhat", blackhatImg);
 
-        vector<double> center_x;
-        for (const auto& contour : contours) {
-            if (contourArea(contour) < 15) continue;
+        Mat canny;
+        Canny(blackhatImg, canny, 100, 255);
+        imshow("canny", canny);
 
-            RotatedRect rect = minAreaRect(contour);
-            double angle = rect.angle;
-            double width = rect.size.width;
-            double height = rect.size.height;
-
-            if (width < height) {
-                angle += 90;
-            }
-            cout << "angle: " << angle << endl;
-            if (angle > 150 || angle < 30) continue;
-
-            Point2f box[4];
-            rect.points(box);
-            for (int i = 0; i < 4; i++) {
-                box[i].y = box[i].y + size_y / 2;
-            }
-            for (int i = 0; i < 4; i++) {
-                line(frame, box[i], box[(i + 1) % 4], Scalar(0, 255, 0), 2);
-            }
-
-            center_x.push_back(rect.center.x);
+        int t = 0;
+        int left[canny.rows], right[canny.rows], mid[canny.rows];
+        for (int i = 0; i < canny.rows; i++) {
+            left[i] = -1;
+            right[i] = -1;
+            mid[i] = -1;
         }
-        
-        cout << "center_x: " << center_x.size() << endl;
-        double center = size_x / 2;
-        if (!center_x.empty()) {
-            sort(center_x.begin(), center_x.end());
-            if (center_x.size() >= 2) {
-                center = (center_x[0] + center_x.back()) / 2;
-            } else {
-                if (center_x[0] < center) {
-                    center = center_x[0] / 2 + center;
-                } else {
-                    center = center_x[0] / 2;
+
+        double mid_sum = 0;
+        left[0] = 0, right[0] = 0;
+
+        for (int i = canny.rows - 1; i >= 0; i--) {
+            int flag_left = 0, flag_right = 0;
+            for (int j = 0; j < canny.cols; j++) {
+                if (canny.at<uchar>(i, j) == 255) {
+                    left[t] = j;
+                    flag_left = 1;
+                    // cv::circle(frame, cv::Point(j, i + size_y / 2), 1, cv::Scalar(0, 0, 255), 2);
+                    for (int k = j; k < canny.cols; k++) {
+                        if (canny.at<uchar>(i, k) == 255 && k - j > size_x / 4) {
+                            right[t] = k;
+                            flag_right = 1;
+                            // cv::circle(frame, cv::Point(k, i + size_y / 2), 1, cv::Scalar(0, 0, 255), 2);
+                            break;
+                        }
+                    }
+                    break;
+                }
+                if (flag_left == 0) {
+                    left[t] = 0;
+                    // cv::circle(frame, cv::Point(0, i + size_y / 2), 1, cv::Scalar(0, 0, 255), 2);
+                    right[t] = size_x - 1;
+                    // cv::circle(frame, cv::Point(599, i + size_y / 2), 1, cv::Scalar(0, 0, 255), 2);
+                }
+                if (flag_left == 1 && flag_right == 0) {
+                    right[t] = size_x - 1;
                 }
             }
+            if (t > 0) {
+                if (flag_right == 0) {
+                    if (left[t - 1] - left[t] > 0) {
+                        int n = left[t - 1];
+                        left[t - 1] = size_x - 1 - right[t - 1];
+                        right[t - 1] = n;
+                        // cv::circle(frame, cv::Point(left[t - 1], i + size_y / 2), 1, cv::Scalar(0, 0, 255), 2);
+                    }
+                    // else {
+                    //     cv::circle(frame, cv::Point(right[t - 1], i + size_y / 2), 1, cv::Scalar(0, 0, 255), 2);
+                    // }
+                }
+                mid[t - 1] = (left[t - 1] + right[t - 1]) / 2;
+                mid_sum += mid[t - 1];
+            }
+            t++;
         }
-        cv::circle(frame, Point(center, size_y / 2), 5, Scalar(0, 0, 255), -1);
+        double mid_final = mid_sum / canny.rows;
+
+        cv::circle(frame, Point(mid_final, size_y / 2), 5, Scalar(0, 0, 255), -1);
         cv::imshow("frame", frame);
-        if (waitKey(1) == 27) break;
-        pidControl(center, servo_pin);
+        int key = waitKey(50);
+        if (key == 27) break;
+        else continue;
+
+        pidControl(mid_final, servo_pin);
     }
 
     cap.release();
     destroyAllWindows();
 }
 
+// int main() {
+//     system("sudo killall pigpiod");
+//     system("sudo cp /home/pi/.Xauthority /root/");
+//     sleep(2);
+
+//     int servo_pin = 12;
+//     int pwm_pin = 13;
+//     int pi = gpioInitialise();
+//     if (pi < 0) {
+//         cerr << "pigpio 初始化失败" << endl;
+//         return -1;
+//     }
+
+//     initServo(servo_pin);
+//     initMotor(pwm_pin);
+//     sleep(1);
+
+//     thread t1(videoProcessing, servo_pin);
+//     // thread t2(moveforward, pwm_pin);
+//     try {
+//         t1.join();
+//         // t2.join();
+//     } catch (const exception& e) {
+//         cerr << "Exception: " << e.what() << endl;
+//     }
+
+//     gpioTerminate();
+//     return 0;
+// }
+
 int main() {
-    system("sudo killall pigpiod");
-    system("sudo cp /home/pi/.Xauthority /root/");
-    sleep(2);
-
-    int servo_pin = 12;
-    int pwm_pin = 13;
-    int pi = gpioInitialise();
-    if (pi < 0) {
-        cerr << "pigpio 初始化失败" << endl;
-        return -1;
+    const string video_path = "/home/pi/5G_ws/output238.avi";
+    VideoCapture cap(video_path);
+    // VideoCapture cap(0, CAP_V4L2);
+    if (!cap.isOpened()) {
+        cout << "视频打开失败" << endl;
+        return 1;
     }
 
-    initServo(servo_pin);
-    initMotor(pwm_pin);
-    sleep(1);
+    while (cap.isOpened()) {
+        Mat frame;
+        cap >> frame;
+        Mat lane_detected = detectLanes(frame);
 
-    thread t1(videoProcessing, servo_pin);
-    thread t2(moveforward, pwm_pin);
-    try {
-        t1.join();
-        t2.join();
-    } catch (const exception& e) {
-        cerr << "Exception: " << e.what() << endl;
+        imshow("Detected Lanes", lane_detected);
+        if (waitKey(1) == 27) break;
     }
-
-    gpioTerminate();
     return 0;
 }
