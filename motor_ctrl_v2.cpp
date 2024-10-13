@@ -10,17 +10,18 @@
 using namespace std;
 using namespace cv;
 
-int size_x = 90;
-int size_y = 60;
+int size_x = 300;
+int size_y = 200;
 
 void moveforward(int pwm_pin) {
-    sleep(5);
-    int i = 10750;
+    sleep(2);
+    int i = 12400;
     while (true) {
+        // cout << "PWM值: " << i << endl;
         gpioPWM(pwm_pin, i);
-        // i += 50;
-        // if (i >= 11000) {
-        //     i = 10000;
+        // i -= 100;
+        // if (i < 11000) {
+        //     i = 12400;
         // }
         sleep(3);
     }
@@ -45,8 +46,8 @@ void initMotor(int pwm_pin) {
     gpioSetMode(pwm_pin, PI_OUTPUT);
     gpioSetPWMfrequency(pwm_pin, 200);
     gpioSetPWMrange(pwm_pin, 40000);
-    gpioPWM(pwm_pin, 10000);
-    sleep(2);
+    // gpioPWM(pwm_pin, 10000);
+    // sleep(2);
     cout << "电机初始化完成" << endl;
 }
 
@@ -69,8 +70,8 @@ void pidControl(double center_cal, int servo_pin) {
     }
 
     double angle = 90 - error_angle;
-    angle = (angle - 90) * 4 + 90;
-    // cout << "servo angle: " << angle << endl;
+    angle = (angle - 90) * 2 + 90;
+    cout << "servo angle: " << angle << endl;
     last_error = error;
     gpioPWM(servo_pin, angleToDutyCycle(angle));
     sleep(0.005);
@@ -120,11 +121,11 @@ Mat color_thresh(const Mat& image, int s_thresh[2], int l_thresh[2], int b_thres
 }
 
 void videoProcessing(int servo_pin) {
+    int s_thresh[2] = {41, 255};
+    int l_thresh[2] = {64, 147};
+    int b_thresh[2] = {0, 195};
+    int v_thresh[2] = {0, 255};
     // namedWindow("trackbar", WINDOW_NORMAL);
-    int s_thresh[2] = {114, 255};
-    int l_thresh[2] = {109, 174};
-    int b_thresh[2] = {162, 232};
-    int v_thresh[2] = {176, 224};
     // createTrackbar("s_min", "trackbar", &(s_thresh[0]), 255, nullptr);
     // createTrackbar("s_max", "trackbar", &(s_thresh[1]), 255, nullptr);
     // createTrackbar("l_min", "trackbar", &(l_thresh[0]), 255, nullptr);
@@ -141,22 +142,15 @@ void videoProcessing(int servo_pin) {
     }
 
     Mat mask = Mat::zeros(Size(size_x, size_y / 2), CV_8UC1);
-    vector<Point> points = {Point(size_x / 4, 0), Point(size_x * 3 / 4, 0), Point(size_x, size_y), Point(0, size_y)};
+    vector<Point> points = {Point(size_x / 8, 0), Point(size_x * 7 / 8, 0), Point(size_x, size_y / 2), Point(0, size_y / 2)};
     fillPoly(mask, vector<vector<Point>>{points}, Scalar(255));
 
     while (cap.isOpened()) {
-        // std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
         Mat frame;
         cap >> frame;
         if (frame.empty()) break;
-        // std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> time_span1 = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-        // cout << "获取图像延迟: " << time_span1.count() * 1000 << "ms" << endl;
         resize(frame, frame, Size(size_x, size_y));
-        Mat roi = frame(Rect(0, size_y / 4, size_x, size_y / 2));
-        // std::chrono::high_resolution_clock::time_point t3 = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> time_span2 = std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2);
-        // cout << "ROI延迟: " << time_span2.count() * 1000 << "ms" << endl;
+        Mat roi = frame(Rect(0, size_y / 2, size_x, size_y / 2));
         
         // int s_thresh[2] = {getTrackbarPos("s_min", "trackbar"), getTrackbarPos("s_max", "trackbar")};
         // int l_thresh[2] = {getTrackbarPos("l_min", "trackbar"), getTrackbarPos("l_max", "trackbar")};
@@ -164,24 +158,17 @@ void videoProcessing(int servo_pin) {
         // int v_thresh[2] = {getTrackbarPos("v_min", "trackbar"), getTrackbarPos("v_max", "trackbar")};
 
         Mat combined = color_thresh(roi, s_thresh, l_thresh, b_thresh, v_thresh);
-        // std::chrono::high_resolution_clock::time_point t4 = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> time_span3 = std::chrono::duration_cast<std::chrono::duration<double>>(t4 - t3);
-        // cout << "颜色阈值延迟: " << time_span3.count() * 1000 << "ms" << endl;
         Mat binary;
         bitwise_and(combined, mask, binary);
-        // std::chrono::high_resolution_clock::time_point t5 = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> time_span4 = std::chrono::duration_cast<std::chrono::duration<double>>(t5 - t4);
-        // cout << "二值化延迟: " << time_span4.count() * 1000 << "ms" << endl;
-        // cv::imshow("binary", binary);
+
+        cv::imshow("binary", binary);
         vector<vector<Point>> contours;
         findContours(binary, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-        // std::chrono::high_resolution_clock::time_point t6 = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> time_span5 = std::chrono::duration_cast<std::chrono::duration<double>>(t6 - t5);
-        // cout << "轮廓查找延迟: " << time_span5.count() * 1000 << "ms" << endl;
+        
 
         vector<double> center_x;
         for (const auto& contour : contours) {
-            // if (contourArea(contour) < 5) continue;
+            if (contourArea(contour) < 15) continue;
 
             RotatedRect rect = minAreaRect(contour);
             double angle = rect.angle;
@@ -191,16 +178,22 @@ void videoProcessing(int servo_pin) {
             if (width < height) {
                 angle += 90;
             }
-            // cout << "angle: " << angle << endl;
+            cout << "angle: " << angle << endl;
             if (angle > 150 || angle < 30) continue;
 
             Point2f box[4];
             rect.points(box);
+            for (int i = 0; i < 4; i++) {
+                box[i].y = box[i].y + size_y / 2;
+            }
+            for (int i = 0; i < 4; i++) {
+                line(frame, box[i], box[(i + 1) % 4], Scalar(0, 255, 0), 2);
+            }
 
             center_x.push_back(rect.center.x);
         }
         
-        // cout << "center_x: " << center_x.size() << endl;
+        cout << "center_x: " << center_x.size() << endl;
         double center = size_x / 2;
         if (!center_x.empty()) {
             sort(center_x.begin(), center_x.end());
@@ -214,20 +207,14 @@ void videoProcessing(int servo_pin) {
                 }
             }
         }
-        // std::chrono::high_resolution_clock::time_point t7 = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> time_span6 = std::chrono::duration_cast<std::chrono::duration<double>>(t7 - t6);
-        // cout << "中心计算延迟: " << time_span6.count() * 1000 << "ms" << endl;
-        // cv::circle(frame, Point(center, size_y / 2), 5, Scalar(0, 0, 255), -1);
-        // cv::imshow("frame", frame);
-        // if (waitKey(1) == 27) break;
+        cv::circle(frame, Point(center, size_y / 2), 5, Scalar(0, 0, 255), -1);
+        cv::imshow("frame", frame);
+        if (waitKey(1) == 27) break;
         pidControl(center, servo_pin);
-        // std::chrono::high_resolution_clock::time_point t8 = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double> time_span7 = std::chrono::duration_cast<std::chrono::duration<double>>(t8 - t7);
-        // cout << "舵机控制延迟: " << time_span7.count() * 1000 << "ms" << endl;
     }
 
     cap.release();
-    // destroyAllWindows();
+    destroyAllWindows();
 }
 
 int main() {
@@ -247,9 +234,14 @@ int main() {
     initMotor(pwm_pin);
     sleep(1);
 
-    std::thread t1(videoProcessing, servo_pin), t2(moveforward, pwm_pin);
-    t1.join();
-    t2.join();
+    thread t1(videoProcessing, servo_pin);
+    thread t2(moveforward, pwm_pin);
+    try {
+        t1.join();
+        t2.join();
+    } catch (const exception& e) {
+        cerr << "Exception: " << e.what() << endl;
+    }
 
     gpioTerminate();
     return 0;
