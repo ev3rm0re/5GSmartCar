@@ -55,7 +55,7 @@ static bool isLine(Line& line) {
 	line.center.y = line.center.y + height / 2.0;
 	line.top.y = line.top.y + height / 2.0;
 	line.bottom.y = line.bottom.y + height / 2.0;
-	return line.length / line.width >= 2 && line.area > 500;
+	return line.length / line.width >= 2 && line.area > width * height / 200.0;
 			// (line.center.x < width * 4 / 9.0 || line.center.x > width * 5 / 9.0);
 }
 
@@ -117,9 +117,9 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 	for (const auto& contour : contours) {
 		cv::RotatedRect rect = cv::minAreaRect(contour);
 		Line line(rect);
-		// cv::line((*frame), line.top, line.bottom, cv::Scalar(0, 0, 255), 2);
-		// cv::putText((*frame), std::to_string(line.area), line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
-		// cv::putText((*frame), std::to_string(line.angle), line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
+		cv::line((*frame), line.top, line.bottom, cv::Scalar(0, 0, 255), 2);
+		cv::putText((*frame), std::to_string(line.area), line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
+		cv::putText((*frame), std::to_string(line.angle), line.center + cv::Point2f(0, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
 		if (isLine(line)) {
 			lines.push_back(line);
 		}
@@ -127,10 +127,10 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 
 	// 计算二值化图像白色区域的个数
 	int white_count = cv::countNonZero(binary_frame);
-	if (white_count < width * height / 30 && lines.size() == 0) {
+	if (white_count < width * height / 120 && lines.size() == 0) {
 		threshold += 2;
 	}
-	else if (white_count > width * height / 15 || lines.size() > 2) {
+	else if (white_count > width * height / 50 || lines.size() > 2) {
 		threshold -= 2;
 	}
 	std::cout << "阈值: " << threshold << std::endl;
