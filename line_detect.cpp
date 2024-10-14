@@ -7,10 +7,10 @@
 #include <unistd.h>
 #include <chrono>
 
-const int width = 150;
-const int height = 100;
+const int width = 300;
+const int height = 200;
 
-/*检测代码*/
+// 检测代码
 // 边线结构体
 struct Line : public cv::RotatedRect {
 	Line() = default;
@@ -50,14 +50,13 @@ struct Track {
 	cv::Point2f center;
 };
 
-// 判断是否为直线
-static bool isLine(const Line& line) {
-	if (line.center.x < width / 2.0) {
-		return line.angle > 20 && line.angle < 90 && line.length / line.width > 1.2 && line.area > 200;
-	}
-	else {
-		return line.angle > 90 && line.angle < 160 && line.length / line.width > 1.2 && line.area > 200;
-	}
+// 判断是否为边线
+static bool isLine(Line& line) {
+	line.center.y = line.center.y + height / 2.0;
+	line.top.y = line.top.y + height / 2.0;
+	line.bottom.y = line.bottom.y + height / 2.0;
+	return line.length / line.width >= 2 && line.area > 500;
+			// (line.center.x < width * 4 / 9.0 || line.center.x > width * 5 / 9.0);
 }
 
 // 判断是否为赛道
@@ -82,40 +81,34 @@ static std::vector<Track> getTrack(const std::vector<Line>& lines) {
 
 // 边线检测
 static cv::Point2f lineDetect(cv::Mat* frame) {
-	cv::Mat mask = cv::Mat::zeros((*frame).size(), CV_8UC1);
-	// 绘制梯形mask
-	cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{
-		{
-			cv::Point(0, height / 2),
-			cv::Point(0, height),
-			cv::Point(width, height),
-			cv::Point(width, height / 2),
-			cv::Point(width * 3 / 4, height / 2),
-			cv::Point(width / 2, height / 2),
-			cv::Point(width / 4, height / 2)
-		}
-	}, cv::Scalar(255));
+	static int threshold = 125;
+	
 	// 提取ROI
 	cv::Mat roi_frame;
-	roi_frame = (*frame)(cv::Rect(0, height / 2, width, height / 2));
+	roi_frame = (*frame)(cv::Rect(0, height / 2.0, width, height / 2.0));
+
 	// 灰度化
 	cv::Mat gray_frame;
 	cv::cvtColor(roi_frame, gray_frame, cv::COLOR_BGR2GRAY);
 	// cv::imshow("gray_frame", gray_frame);
+
 	// 直方图均衡化
-	cv::Mat equalized_frame;
-	cv::equalizeHist(gray_frame, equalized_frame);
+	// cv::Mat equalized_frame;
+	// cv::equalizeHist(perspective_frame, equalized_frame);
 	// cv::imshow("equalized_frame", equalized_frame);
+
 	// 二值化
 	cv::Mat binary_frame;
-	cv::threshold(equalized_frame, binary_frame, 220, 255, cv::THRESH_BINARY);
+	cv::threshold(gray_frame, binary_frame, threshold, 255, cv::THRESH_BINARY_INV);
 	// cv::bitwise_and(binary_frame, mask, binary_frame);
 	cv::imshow("binary_frame", binary_frame);
+
 	// 开运算
-	// cv::Mat blackhat_frame;
+	// cv::Mat morphology_frame;
 	// cv::Mat	kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-	// cv::morphologyEx(binary_frame, blackhat_frame, cv::MORPH_OPEN, kernel);
-	// cv::imshow("blackhat_frame", blackhat_frame);
+	// cv::morphologyEx(binary_frame, morphology_frame, cv::MORPH_OPEN, kernel);
+	// cv::imshow("blackhat_frame", morphology_frame);
+
 	// 查找轮廓
 	std::vector<std::vector<cv::Point>> contours;
     cv::findContours(binary_frame, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
@@ -124,10 +117,24 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 	for (const auto& contour : contours) {
 		cv::RotatedRect rect = cv::minAreaRect(contour);
 		Line line(rect);
+		// cv::line((*frame), line.top, line.bottom, cv::Scalar(0, 0, 255), 2);
+		// cv::putText((*frame), std::to_string(line.area), line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
+		// cv::putText((*frame), std::to_string(line.angle), line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
 		if (isLine(line)) {
 			lines.push_back(line);
 		}
 	}
+
+	// 计算二值化图像白色区域的个数
+	int white_count = cv::countNonZero(binary_frame);
+	if (white_count < width * height / 30 && lines.size() == 0) {
+		threshold += 2;
+	}
+	else if (white_count > width * height / 15 || lines.size() > 2) {
+		threshold -= 2;
+	}
+	std::cout << "阈值: " << threshold << std::endl;
+
 	if (lines.size() == 0) {
 		return cv::Point2f(width / 2, height / 2);
 	}
@@ -154,19 +161,25 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 		cv::line((*frame), track.left_line.top, track.left_line.bottom, cv::Scalar(0, 255, 0), 2);
 		cv::line((*frame), track.right_line.top, track.right_line.bottom, cv::Scalar(0, 255, 0), 2);
 		cv::line((*frame), track.left_line.center, track.right_line.center, cv::Scalar(0, 255, 0), 2);
+		cv::putText((*frame), std::to_string(track.left_line.area), track.left_line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+		cv::putText((*frame), std::to_string(track.right_line.area), track.right_line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
 		cv::circle((*frame), track.center, 5, cv::Scalar(0, 255, 0), -1);
 	}
 	return tracks.empty() ? cv::Point2f(width / 2, height / 2) : tracks[0].center;
 }
 
-/*控制代码*/
+// 控制代码
 // 前进
 void moveforward(int pwm_pin) {
     sleep(2);
-    int i = 12300;
+    int i = 11000;
     while (true) {
         gpioPWM(pwm_pin, i);
-        if (i != 12700) i += 100;
+		
+        if (i != 13000){
+			i += 100;
+			std::cout << "前进" << std::endl;
+		};
         sleep(3);
     }
 }
@@ -195,7 +208,7 @@ void initMotor(int pwm_pin) {
     std::cout << "电机初始化完成" << std::endl;
 }
 
-void pidControl(double center_cal, int servo_pin) {
+void pidControl(double center, int servo_pin) {
     static double kp = 0.33;
     static double kd = 0.11;
     static double last_error = 0;
@@ -204,7 +217,7 @@ void pidControl(double center_cal, int servo_pin) {
     double angle_outmax = 45;
     double angle_outmin = -45;
 
-    error = center_cal - width / 2;
+    error = center - width / 2;
     double error_angle = kp * error + kd * (error - last_error);
 
     if (error_angle > angle_outmax) {
@@ -214,7 +227,7 @@ void pidControl(double center_cal, int servo_pin) {
     }
 
     double angle = 90 - error_angle;
-    angle = (angle - 90) * 3 + 90;
+    angle = (angle - 90) * 2 + 90;
     // std::cout << "舵机角度: " << angle << std::endl;
     last_error = error;
     gpioPWM(servo_pin, angleToDutyCycle(angle));
@@ -223,35 +236,25 @@ void pidControl(double center_cal, int servo_pin) {
 }
 
 void videoProcessing(int servo_pin) {
-	const std::string video_path = "/home/pi/5G_ws/output238.avi";
-	cv::VideoCapture cap(video_path);
+	// const std::string video_path = "/home/pi/5G_ws/output238.avi";
+	cv::VideoCapture cap(0, cv::CAP_V4L2);
 	if (!cap.isOpened()) {
-		std::cerr << "文件打开失败" << video_path << std::endl;
+		std::cerr << "打开失败" << std::endl;
 		return;
 	}
-	
 	while (cap.isOpened()) {
-		// std::chrono::high_resolution_clock::time_point time1 = std::chrono::high_resolution_clock::now();
 		cv::Mat frame;
 		cap >> frame;
 		if (frame.empty()) break;
-		// std::chrono::high_resolution_clock::time_point time2 = std::chrono::high_resolution_clock::now();
-		// std::chrono::duration<double> time_span1 = std::chrono::duration_cast<std::chrono::duration<double>>(time2 - time1);
-		// std::cout << "获取视频延迟: " << time_span1.count() * 1000 << "ms" << std::endl;
 		cv::resize(frame, frame, cv::Size(width, height));
 		cv::Point2f center = lineDetect(&frame);
-		// std::chrono::high_resolution_clock::time_point time3 = std::chrono::high_resolution_clock::now();
-		// std::chrono::duration<double> time_span2 = std::chrono::duration_cast<std::chrono::duration<double>>(time3 - time2);
-		// std::cout << "检测延迟: " << time_span2.count() * 1000 << "ms" << std::endl;
-		// std::cout << "车道中心x: " << center.x << std::endl;
 		pidControl(center.x, servo_pin);
-		// std::chrono::high_resolution_clock::time_point time4 = std::chrono::high_resolution_clock::now();
-		// std::chrono::duration<double> time_span3 = std::chrono::duration_cast<std::chrono::duration<double>>(time4 - time3);
-		// std::cout << "控制延迟: " << time_span3.count() * 1000 << "ms" << std::endl;
 		cv::imshow("frame", frame);
 		int key = cv::waitKey(50);
 		if (key == 27) break;
 	}
+	cap.release();
+	cv::destroyAllWindows();
 }
 
 
@@ -272,10 +275,10 @@ int main() {
 	sleep(1);
 
 	std::thread t1(videoProcessing, servo_pin);
-	// std::thread t2(moveforward, pwm_pin);
+	std::thread t2(moveforward, pwm_pin);
 	try {
 		t1.join();
-		// t2.join();
+		t2.join();
 	} catch (const std::exception& e) {
 		std::cerr << "Exception: " << e.what() << std::endl;
 	}
