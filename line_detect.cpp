@@ -52,10 +52,10 @@ struct Track {
 
 // 判断是否为边线
 static bool isLine(Line& line) {
-	line.center.y = line.center.y + height / 2.0;
-	line.top.y = line.top.y + height / 2.0;
-	line.bottom.y = line.bottom.y + height / 2.0;
-	return line.length / line.width >= 2 && line.area > width * height / 200.0;
+	line.center.y = line.center.y + height * 3.0 / 8.0;
+	line.top.y = line.top.y + height * 3.0 / 8.0;
+	line.bottom.y = line.bottom.y + height * 3.0 / 8.0;
+	return line.length / line.width >= 2 && line.area > width * height / 400.0;
 			// (line.center.x < width * 4 / 9.0 || line.center.x > width * 5 / 9.0);
 }
 
@@ -85,7 +85,7 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 	
 	// 提取ROI
 	cv::Mat roi_frame;
-	roi_frame = (*frame)(cv::Rect(0, height / 2.0, width, height / 2.0));
+	roi_frame = (*frame)(cv::Rect(0, height * 3.0 / 8.0, width, height / 2.0));
 
 	// 灰度化
 	cv::Mat gray_frame;
@@ -127,10 +127,10 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 
 	// 计算二值化图像白色区域的个数
 	int white_count = cv::countNonZero(binary_frame);
-	if (white_count < width * height / 120 && lines.size() == 0) {
+	if (white_count < width * height / 120.0 && lines.size() == 0) {
 		threshold += 2;
 	}
-	else if (white_count > width * height / 50 || lines.size() > 2) {
+	else if (white_count > width * height / 50.0 || lines.size() > 2) {
 		threshold -= 2;
 	}
 	std::cout << "阈值: " << threshold << std::endl;
@@ -156,7 +156,8 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
  	if (lines.size() >= 2) {
 		tracks = getTrack(lines);
 	}
-
+	
+	// 绘制赛道
 	for (const auto& track : tracks) {
 		cv::line((*frame), track.left_line.top, track.left_line.bottom, cv::Scalar(0, 255, 0), 2);
 		cv::line((*frame), track.right_line.top, track.right_line.bottom, cv::Scalar(0, 255, 0), 2);
@@ -165,6 +166,9 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 		cv::putText((*frame), std::to_string(track.right_line.area), track.right_line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
 		cv::circle((*frame), track.center, 5, cv::Scalar(0, 255, 0), -1);
 	}
+
+	// TODO: 有多个赛道时筛选赛道
+
 	return tracks.empty() ? cv::Point2f(width / 2, height / 2) : tracks[0].center;
 }
 
@@ -227,7 +231,7 @@ void pidControl(double center, int servo_pin) {
     }
 
     double angle = 90 - error_angle;
-    angle = (angle - 90) * 2 + 90;
+    // angle = (angle - 90) * 2 + 90;
     // std::cout << "舵机角度: " << angle << std::endl;
     last_error = error;
     gpioPWM(servo_pin, angleToDutyCycle(angle));
