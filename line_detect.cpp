@@ -53,10 +53,10 @@ struct Track {
 // 判断是否为直线
 static bool isLine(const Line& line) {
 	if (line.center.x < width / 2.0) {
-		return line.angle > 20 && line.angle < 120 && line.length / line.width > 1.2 && line.area > 200;
+		return line.angle > 20 && line.angle < 90 && line.length / line.width > 1.2 && line.area > 200;
 	}
 	else {
-		return line.angle > 60 && line.angle < 160 && line.length / line.width > 1.2 && line.area > 200;
+		return line.angle > 90 && line.angle < 160 && line.length / line.width > 1.2 && line.area > 200;
 	}
 }
 
@@ -96,11 +96,11 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 		}
 	}, cv::Scalar(255));
 	// 提取ROI
-	// cv::Mat masked_frame;
-	// cv::bitwise_and(*frame, *frame, masked_frame, mask);
+	cv::Mat roi_frame;
+	roi_frame = (*frame)(cv::Rect(0, height / 2, width, height / 2));
 	// 灰度化
 	cv::Mat gray_frame;
-	cv::cvtColor(*frame, gray_frame, cv::COLOR_BGR2GRAY);
+	cv::cvtColor(roi_frame, gray_frame, cv::COLOR_BGR2GRAY);
 	// cv::imshow("gray_frame", gray_frame);
 	// 直方图均衡化
 	cv::Mat equalized_frame;
@@ -108,9 +108,9 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 	// cv::imshow("equalized_frame", equalized_frame);
 	// 二值化
 	cv::Mat binary_frame;
-	cv::threshold(equalized_frame, binary_frame, 90, 255, cv::THRESH_BINARY_INV);
-	cv::bitwise_and(binary_frame, mask, binary_frame);
-	// cv::imshow("binary_frame", binary_frame);
+	cv::threshold(equalized_frame, binary_frame, 220, 255, cv::THRESH_BINARY);
+	// cv::bitwise_and(binary_frame, mask, binary_frame);
+	cv::imshow("binary_frame", binary_frame);
 	// 开运算
 	// cv::Mat blackhat_frame;
 	// cv::Mat	kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
@@ -127,6 +127,9 @@ static cv::Point2f lineDetect(cv::Mat* frame) {
 		if (isLine(line)) {
 			lines.push_back(line);
 		}
+	}
+	if (lines.size() == 0) {
+		return cv::Point2f(width / 2, height / 2);
 	}
 
 	// 筛选轨道
@@ -220,8 +223,8 @@ void pidControl(double center_cal, int servo_pin) {
 }
 
 void videoProcessing(int servo_pin) {
-	const std::string video_path = "/home/pi/5G_ws/lines.mp4";
-	cv::VideoCapture cap(0, cv::CAP_V4L2);
+	const std::string video_path = "/home/pi/5G_ws/output238.avi";
+	cv::VideoCapture cap(video_path);
 	if (!cap.isOpened()) {
 		std::cerr << "文件打开失败" << video_path << std::endl;
 		return;
@@ -245,9 +248,9 @@ void videoProcessing(int servo_pin) {
 		// std::chrono::high_resolution_clock::time_point time4 = std::chrono::high_resolution_clock::now();
 		// std::chrono::duration<double> time_span3 = std::chrono::duration_cast<std::chrono::duration<double>>(time4 - time3);
 		// std::cout << "控制延迟: " << time_span3.count() * 1000 << "ms" << std::endl;
-		// cv::imshow("frame", frame);
-		// int key = cv::waitKey(1);
-		// if (key == 27) break;
+		cv::imshow("frame", frame);
+		int key = cv::waitKey(50);
+		if (key == 27) break;
 	}
 }
 
@@ -269,10 +272,10 @@ int main() {
 	sleep(1);
 
 	std::thread t1(videoProcessing, servo_pin);
-	std::thread t2(moveforward, pwm_pin);
+	// std::thread t2(moveforward, pwm_pin);
 	try {
 		t1.join();
-		t2.join();
+		// t2.join();
 	} catch (const std::exception& e) {
 		std::cerr << "Exception: " << e.what() << std::endl;
 	}
