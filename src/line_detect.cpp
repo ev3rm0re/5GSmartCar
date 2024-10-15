@@ -183,14 +183,14 @@ void moveforward(int pwm_pin) {
     int i = 12000;
 	int start = 0;
     while (true) {
-		if (i != 12500 && start == 0) {
+		if (i != 12700 && start == 0) {
 			i += 100;
 		};
         gpioPWM(pwm_pin, i);
 		std::cout << "PWM值:" << i << std::endl;
-		if (i == 12500) {
+		if (i == 12700) {
 			start = 1;
-			i = 12300;
+			i = 12600;
 		}
         sleep(3);
     }
@@ -239,7 +239,7 @@ void pidControl(double center, int servo_pin) {
     }
 
     double angle = 90 - error_angle;
-    angle = (angle - 90) * 3.0 + 90;
+    // angle = (angle - 90) * 1.2 + 90;
     std::cout << "舵机角度: " << angle << std::endl;
     last_error = error;
     gpioPWM(servo_pin, angleToDutyCycle(angle));
@@ -262,7 +262,7 @@ void videoProcessing(int servo_pin) {
 		cv::Point2f center = lineDetect(&frame);
 		pidControl(center.x, servo_pin);
 		cv::imshow("frame", frame);
-		int key = cv::waitKey(50);
+		int key = cv::waitKey(1);
 		if (key == 27) break;
 	}
 	cap.release();
@@ -287,10 +287,10 @@ int main() {
 	sleep(1);
 
 	std::thread t1(videoProcessing, servo_pin);
-	// std::thread t2(moveforward, pwm_pin);
+	std::thread t2(moveforward, pwm_pin);
 	try {
 		t1.join();
-		// t2.join();
+		t2.join();
 	} catch (const std::exception& e) {
 		std::cerr << "Exception: " << e.what() << std::endl;
 	}
