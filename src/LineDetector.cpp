@@ -14,7 +14,6 @@ bool LineDetector::isLine(Line& line) const {
 	line.top.y = line.top.y + height * 2.0 / 3.0;
 	line.bottom.y = line.bottom.y + height * 2.0 / 3.0;
 	return line.length / line.width >= 2 && line.area > width * height / 200.0;
-			// (line.center.x < width * 4 / 9.0 || line.center.x > width * 5 / 9.0);
 }
 
 // 判断是否为赛道
@@ -68,9 +67,6 @@ cv::Point2f LineDetector::detect(cv::Mat* frame) const {
 	for (const auto& contour : contours) {
 		cv::RotatedRect rect = cv::minAreaRect(contour);
 		Line line(rect);
-		// cv::line((*frame), line.top, line.bottom, cv::Scalar(0, 0, 255), 2);
-		// cv::putText((*frame), std::to_string(line.area), line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
-		// cv::putText((*frame), std::to_string(line.angle), line.center + cv::Point2f(0, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255), 2);
 		if (isLine(line)) {
 			lines.push_back(line);
 		}
