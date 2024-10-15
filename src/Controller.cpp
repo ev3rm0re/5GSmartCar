@@ -33,14 +33,14 @@ Controller::Controller(int servo_pin, int pwm_pin) {
 void Controller::moveforward(std::atomic<bool>& flag) const {
     std::cout << "前进!!!" << std::endl;
     sleep(5);
-    int i = 12000;
+    int i = 12800;
     int start = 0;
     int detected_crosswalk = 0;
     while (true) {
-        // std::cout << "PWM值:" << i << std::endl;
+        std::cout << "PWM值:" << i << std::endl;
         if (flag.load(std::memory_order_acquire) == true && detected_crosswalk == 0) {
             std::cout << "检测到斑马线" << std::endl;
-            gpioPWM(pwm_pin, 12000);
+            gpioPWM(pwm_pin, 12800);
             sf::SoundBuffer soundbuffer;
             if (!soundbuffer.loadFromFile("/home/pi/5G_ws/medias/niganma.wav")) {
                 std::cerr << "打开文件失败" << std::endl;
@@ -55,13 +55,13 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
             detected_crosswalk = 1;
             continue;
         }
-        if (i != 12800 && start == 0) {
-            i += 200;
+        if (i != 13200 && start == 0) {
+            i += 100;
         };
         gpioPWM(pwm_pin, i);
-        if (i == 12800) {
+        if (i == 13200) {
             start = 1;
-            i = 12600;
+            i = 13000;
         }
         usleep(200 * 1000);
     }
