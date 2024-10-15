@@ -7,6 +7,7 @@
 #include "Controller.hpp"
 
 void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
+    // std::string video_path = "/home/pi/5G_ws/medias/output238.avi";
     cv::VideoCapture cap(0, cv::CAP_V4L2);
     if (!cap.isOpened()) {
         std::cerr << "打开失败" << std::endl;
@@ -25,7 +26,7 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
         cv::Point2f center = detector.detect(&frame);
         controller.pidControl(center.x, width);
         cv::imshow("frame", frame);
-        int key = cv::waitKey(1);
+        int key = cv::waitKey(50);
         if (key == 27) break;
     }
 }

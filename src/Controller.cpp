@@ -37,26 +37,26 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
     int start = 0;
     int detected_crosswalk = 0;
     while (true) {
+        // std::cout << "PWM值:" << i << std::endl;
         if (flag.load(std::memory_order_acquire) == true && detected_crosswalk == 0) {
             std::cout << "检测到斑马线" << std::endl;
             gpioPWM(pwm_pin, 12000);
-            sf::Music music;
-            if (!music.openFromFile("/home/pi/5G_ws/medias/niganma.mp3")) {
+            sf::SoundBuffer soundbuffer;
+            if (!soundbuffer.loadFromFile("/home/pi/5G_ws/medias/niganma.wav")) {
                 std::cerr << "打开文件失败" << std::endl;
                 continue;
             }
-            music.play();
-            while(music.getStatus() == sf::Music::Playing) {
-                sf::sleep(sf::milliseconds(100));
-            }
+            sf::Sound sound;
+            sound.setBuffer(soundbuffer);
+            sound.play();
             sleep(5);
+            
             flag.store(false, std::memory_order_release);
             detected_crosswalk = 1;
             continue;
         }
         if (i != 12800 && start == 0) {
             i += 200;
-            std::cout << "PWM值:" << i << std::endl;
         };
         gpioPWM(pwm_pin, i);
         if (i == 12800) {

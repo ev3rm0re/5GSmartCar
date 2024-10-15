@@ -44,7 +44,7 @@ cv::Point2f LineDetector::detect(cv::Mat* frame) const {
 	
 	// 提取ROI
 	cv::Mat roi_frame;
-	roi_frame = (*frame)(cv::Rect(0, height * 2.0 / 3.0, width, height / 3.0));
+	roi_frame = (*frame)(cv::Rect(0, height * 5.0 / 8.0, width, height * 3.0 / 8.0));
 	
 	// 灰度化
 	cv::Mat gray_frame;
@@ -57,7 +57,7 @@ cv::Point2f LineDetector::detect(cv::Mat* frame) const {
 
 	// 二值化
 	cv::Mat binary_frame;
-	cv::threshold(gray_frame, binary_frame, threshold, 255, cv::THRESH_BINARY_INV);
+	cv::threshold(gray_frame, binary_frame, threshold, 255, cv::THRESH_BINARY);
 	cv::imshow("binary_frame", binary_frame);
 
 	// 查找轮廓
@@ -82,13 +82,13 @@ cv::Point2f LineDetector::detect(cv::Mat* frame) const {
 	// 计算二值化图像白色区域的个数
 	int white_count = cv::countNonZero(binary_frame);
 	if (white_count < width * height / 80.0 && lines.size() == 0) {
-		threshold += 2;
+		threshold -= 2;
 	}
 	else if (white_count < width * height / 100 && lines.size() == 1) {
-		threshold++;
-	}
-	else if (white_count > width * height / 50.0) {
 		threshold--;
+	}
+	else if (white_count > width * height / 15.0) {
+		threshold++;
 	}
 
 	if (current_threshold != threshold) {
@@ -138,13 +138,14 @@ cv::Point2f LineDetector::detect(cv::Mat* frame) const {
 }
 
 bool LineDetector::crosswalkDetect(cv::Mat* frame) const {
+	static int threshold = 140;
 	int cross_count = 0;
 	
 	cv::Mat frame_copy = frame->clone();
 
 	// 提取ROI
 	cv::Mat roi_frame;
-	roi_frame = frame_copy(cv::Rect(width / 8.0, height * 2.0 / 3.0, width * 6.0 / 8.0, height / 3.0));
+	roi_frame = frame_copy(cv::Rect(0, height * 5.0 / 8.0, width, height * 3.0 / 8.0));
 
 	// 灰度化
 	cv::Mat gray_frame;
@@ -152,7 +153,8 @@ bool LineDetector::crosswalkDetect(cv::Mat* frame) const {
 
 	// 二值化
 	cv::Mat binary_frame;
-	cv::threshold(gray_frame, binary_frame, 160, 255, cv::THRESH_BINARY_INV);
+	cv::threshold(gray_frame, binary_frame, threshold, 255, cv::THRESH_BINARY);
+	cv::imshow("cross_binary_frame", binary_frame);
 
 	// 查找轮廓
 	std::vector<std::vector<cv::Point>> contours;
@@ -167,6 +169,18 @@ bool LineDetector::crosswalkDetect(cv::Mat* frame) const {
 			cv::line(roi_frame, line.top, line.bottom, cv::Scalar(0, 0, 255), 2);
 			cross_count++;
 		}
+	}
+
+	// 计算二值化图像白色区域的个数
+	int white_count = cv::countNonZero(binary_frame);
+	if (white_count < width * height / 80.0) {
+		threshold -= 2;
+	}
+	else if (white_count < width * height / 100) {
+		threshold--;
+	}
+	else if (white_count > width * height / 15.0) {
+		threshold++;
 	}
 
 	cv::imshow("cross_frame", roi_frame);
