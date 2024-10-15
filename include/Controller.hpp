@@ -1,11 +1,13 @@
 #pragma once
 
 #include <pigpio.h>
+#include <string>
 
 class Controller {
 public:
     Controller(int servo_pin, int pwm_pin);
-    ~Controller();
+    void initServo() const;
+    void initMotor() const;
     void moveforward() const;
     double angleToDutyCycle(double angle) const;
     void pidControl(double center, int width) const;

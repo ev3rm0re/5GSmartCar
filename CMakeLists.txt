@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(CarControl LANGUAGES CXX)
 
-add_definitions(-Wno-deprecated-declarations)
+add_definitions(-Wno-psabi)
 
 set(CMAKE_CXX_FLAGS "${CAMKE_CXX_FLAGS} -std=c++11 -pthread")
 

@@ -13,13 +13,12 @@ void videoProcessing(Controller controller, LineDetector detector) {
     }
     int width = 300;
     int height = 200;
-    cap.set(cv::CAP_PROP_FRAME_WIDTH, width);
-    cap.set(cv::CAP_PROP_FRAME_HEIGHT, height);
 
     while (cap.isOpened()) {
         cv::Mat frame;
         cap >> frame;
         if (frame.empty()) break;
+        cv::resize(frame, frame, cv::Size(width, height));
         cv::Point2f center = detector.detect(&frame);
         controller.pidControl(center.x, width);
         cv::imshow("frame", frame);
@@ -28,6 +27,9 @@ void videoProcessing(Controller controller, LineDetector detector) {
     }
 }
 
+void move(Controller* controller) {
+    controller->moveforward();
+}
 
 int main() {
     system("sudo killall pigpiod");
@@ -39,12 +41,14 @@ int main() {
     LineDetector detector(300, 200);
 
     std::thread video_thread(videoProcessing, controller, detector);
-    std::thread move_thread(&Controller::moveforward, &controller);
+    std::thread move_thread(move, &controller);
     try {
         video_thread.join();
         move_thread.join();
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
+
+    gpioTerminate();
     return 0;
 }
