@@ -2,13 +2,12 @@
 
 #include <pigpio.h>
 #include <string>
+#include <atomic>
 
 class Controller {
 public:
     Controller(int servo_pin, int pwm_pin);
-    void initServo() const;
-    void initMotor() const;
-    void moveforward() const;
+    void moveforward(std::atomic<bool>& flag) const;
     double angleToDutyCycle(double angle) const;
     void pidControl(double center, int width) const;
 private:

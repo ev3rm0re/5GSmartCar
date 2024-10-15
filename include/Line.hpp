@@ -40,7 +40,9 @@ struct Track {
 			left_line = l2, right_line = l1;
 		}
 		center = (left_line.center + right_line.center) / 2.0;
+		width = cv::norm(left_line.center - right_line.center);
 	};
 	Line left_line, right_line;
+	double width;
 	cv::Point2f center;
 };

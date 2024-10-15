@@ -1,11 +1,12 @@
 #include <opencv2/opencv.hpp>
 #include <unistd.h>
 #include <thread>
+#include <atomic>
 
 #include "LineDetector.hpp"
 #include "Controller.hpp"
 
-void videoProcessing(Controller controller, LineDetector detector) {
+void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
     cv::VideoCapture cap(0, cv::CAP_V4L2);
     if (!cap.isOpened()) {
         std::cerr << "打开失败" << std::endl;
@@ -19,6 +20,8 @@ void videoProcessing(Controller controller, LineDetector detector) {
         cap >> frame;
         if (frame.empty()) break;
         cv::resize(frame, frame, cv::Size(width, height));
+        bool has_crosswalk = detector.crosswalkDetect(&frame);
+        flag.store(has_crosswalk, std::memory_order_release);
         cv::Point2f center = detector.detect(&frame);
         controller.pidControl(center.x, width);
         cv::imshow("frame", frame);
@@ -27,8 +30,8 @@ void videoProcessing(Controller controller, LineDetector detector) {
     }
 }
 
-void move(Controller* controller) {
-    controller->moveforward();
+void mover(Controller* controller, std::atomic<bool>& has_crosswalk) {
+    controller->moveforward(has_crosswalk);
 }
 
 int main() {
@@ -39,9 +42,9 @@ int main() {
   	int pwm_pin = 13;
     Controller controller(servo_pin, pwm_pin);
     LineDetector detector(300, 200);
-
-    std::thread video_thread(videoProcessing, controller, detector);
-    std::thread move_thread(move, &controller);
+    std::atomic<bool> flag(false);
+    std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
+    std::thread move_thread(mover, &controller, std::ref(flag));
     try {
         video_thread.join();
         move_thread.join();
