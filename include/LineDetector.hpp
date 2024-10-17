@@ -18,7 +18,7 @@ public:
 	// 过滤边线
 	void filterLines(std::vector<Line>* lines) const;
 	// 获取赛道
-	void getTrack(std::vector<Line>& lines, Track tracks) const;
+	void getTrack(std::vector<Line>& lines, Track* track) const;
 	// 获取二值化图像
 	cv::Mat getBinaryFrame(cv::Mat* frame, cv::Rect ROI, int threshold) const;
 	// 阈值调整
