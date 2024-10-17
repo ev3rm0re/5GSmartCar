@@ -17,6 +17,6 @@ private:
     double kd = 0.11;
     mutable double last_error = 0.0;
     mutable double error = 0.0;
-    double angle_outmax = 45.0;
-    double angle_outmin = -45.0;
+    double angle_outmax = 30.0;
+    double angle_outmin = -30.0;
 };

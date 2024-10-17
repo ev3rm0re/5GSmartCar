@@ -10,7 +10,7 @@ int width = 300;
 int height = 200;
 
 void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    // std::string video_path = "/home/pi/5G_ws/medias/output238.avi";
+    std::string video_path = "/home/pi/5G_ws/medias/output238.avi";
     // cv::VideoCapture cap(video_path);
     cv::VideoCapture cap(0, cv::CAP_V4L2);
     
@@ -29,10 +29,10 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
         cap >> frame;
         if (frame.empty()) break;
         cv::resize(frame, frame, cv::Size(width, height));
-        bool has_crosswalk = detector.crosswalkDetect(&frame);
-        flag.store(has_crosswalk, std::memory_order_release);
-        cv::Point2f center = detector.detect(&frame);
-        controller.pidControl(center.x, width);
+        
+        DetectResult result = detector.detect(&frame);
+        flag.store(result.has_crosswalk, std::memory_order_release);
+        controller.pidControl(result.center.x, width);
         cv::imshow("frame", frame);
         // writer.write(frame);
         int key = cv::waitKey(1);
@@ -40,6 +40,23 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
     }
     // writer.release();
     cap.release();
+    cv::destroyAllWindows();
+}
+
+void imageProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
+    std::string image_path = "/home/pi/5G_ws/medias/playground_debug.jpg";
+    cv::Mat frame = cv::imread(image_path);
+    if (frame.empty()) {
+        std::cerr << "读取失败" << std::endl;
+        return;
+    }
+    cv::resize(frame, frame, cv::Size(width, height));
+    DetectResult result = detector.detect(&frame);
+    flag.store(result.has_crosswalk, std::memory_order_release);
+    std::cout << "center: " << result.center << std::endl;
+    controller.pidControl(result.center.x, width);
+    cv::imshow("frame", frame);
+    cv::waitKey(0);
     cv::destroyAllWindows();
 }
 
@@ -56,11 +73,11 @@ int main() {
     Controller controller(servo_pin, pwm_pin);
     LineDetector detector(width, height);
     std::atomic<bool> flag(false);
-    std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
-    // std::thread move_thread(mover, &controller, std::ref(flag));
+    std::thread video_thread(imageProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
+    std::thread move_thread(mover, &controller, std::ref(flag));
     try {
         video_thread.join();
-        // move_thread.join();
+        move_thread.join();
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }

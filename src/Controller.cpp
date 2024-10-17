@@ -16,9 +16,9 @@ Controller::Controller(int servo_pin, int pwm_pin) {
     gpioSetMode(servo_pin, PI_OUTPUT);
     gpioSetPWMfrequency(servo_pin, 50);
     gpioSetPWMrange(servo_pin, 100);
-    gpioPWM(servo_pin, angleToDutyCycle(45));
+    gpioPWM(servo_pin, angleToDutyCycle(60));
     sleep(1);
-    gpioPWM(servo_pin, angleToDutyCycle(135));
+    gpioPWM(servo_pin, angleToDutyCycle(120));
     sleep(1);
     gpioPWM(servo_pin, angleToDutyCycle(90));
     std::cout << "舵机初始化完成" << std::endl;
@@ -33,13 +33,13 @@ Controller::Controller(int servo_pin, int pwm_pin) {
 void Controller::moveforward(std::atomic<bool>& flag) const {
     std::cout << "前进!!!" << std::endl;
     sleep(5);
-    int i = 12800;
+    int i = 12400;
     int start = 0;
     int detected_crosswalk = 0;
     while (true) {
         if (flag.load(std::memory_order_acquire) == true && detected_crosswalk == 0) {
             std::cout << "检测到斑马线" << std::endl;
-            i = 12800;
+            i = 12400;
             gpioPWM(pwm_pin, i);
             sf::SoundBuffer soundbuffer;
             if (!soundbuffer.loadFromFile("/home/pi/5G_ws/medias/dz-banmaxian.wav")) {
@@ -54,16 +54,17 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
             flag.store(false, std::memory_order_release);
             detected_crosswalk = 1;
         }
-        if (i != 13400 && (start == 0 || detected_crosswalk == 1)) {
+        if (i != 13000 && start == 0 && detected_crosswalk == 1) {
             i += 100;
-            std::cout << "PWM值:" << i << std::endl;
         };
+        std::cout << "PWM值:" << i << std::endl;
         gpioPWM(pwm_pin, i);
-        if (i == 13400 && detected_crosswalk == 1) {
+        if (i == 13000 && detected_crosswalk == 1) {
             start = 1;
-            i = 13200;
+            i = 12800;
         }
         usleep(200 * 1000);
+        
     }
 }
 

@@ -2,31 +2,54 @@
 
 // std
 #include <algorithm>
+#include <numeric>
 
 // opencv
 #include <opencv2/opencv.hpp>
 
+
 // 边线结构体
-struct Line : public cv::RotatedRect {
+struct Line : public std::vector<cv::Point> {
 	Line() = default;
-	explicit Line(const cv::RotatedRect& rect) : cv::RotatedRect(rect) {
-		cv::Point2f p[4];
-		rect.points(p);
-		std::sort(p, p + 4, [](const cv::Point2f& a, const cv::Point2f& b) {
+	explicit Line(const std::vector<cv::Point> fitline) : std::vector<cv::Point>(fitline) {
+		std::sort(begin(), end(), [](const cv::Point& a, const cv::Point& b) {
 			return a.y < b.y;
 			});
-		top = (p[0] + p[1]) / 2;
-		bottom = (p[2] + p[3]) / 2;
+		top = front();
+		bottom = back();
+		center = (top + bottom) / 2.0;
 		length = cv::norm(top - bottom);
-		width = cv::norm(p[0] - p[1]);
-		area = length * width;
-		angle = 180 - std::atan2(bottom.y - top.y, bottom.x - top.x) * 180 / CV_PI;
+		slope = (top.y - bottom.y) / (top.x - bottom.x);
 	};
-	cv::Point2f top, bottom;
+	cv::Point2f top, bottom, center;
 	double length = 0.0;
-	double width = 0.0;
 	double area = 0.0;
-	double angle = 0.0;
+	double slope = 0.0;
+};
+
+// 人行横道结构体
+struct CrossWalk :public cv::RotatedRect {
+	CrossWalk() = default;
+	explicit CrossWalk(const cv::RotatedRect& rect) : cv::RotatedRect(rect) {
+		cv::Point2f vertices[4];
+		rect.points(vertices);
+		std::sort(vertices, vertices + 4, [](const cv::Point2f& a, const cv::Point2f& b) {
+			return a.y < b.y;
+			});
+
+		top = (vertices[0] + vertices[1]) / 2.0;
+		bottom = (vertices[2] + vertices[3]) / 2.0;
+		center = (top + bottom) / 2.0;
+		width = cv::norm(vertices[0] - vertices[1]);
+		height = cv::norm(top - bottom);
+		area = width * height;
+		slope = (top.y - bottom.y) / (top.x - bottom.x);
+	};
+	cv::Point2f center, top, bottom;
+	double width = 0.0;
+	double height = 0.0;
+	double slope = 0.0;
+	double area = 0.0;
 };
 
 // 赛道结构体
@@ -43,6 +66,12 @@ struct Track {
 		width = cv::norm(left_line.center - right_line.center);
 	};
 	Line left_line, right_line;
-	double width;
+	double width = 0.0;
 	cv::Point2f center;
+};
+
+struct DetectResult
+{
+	cv::Point2f center;
+	bool has_crosswalk;
 };
