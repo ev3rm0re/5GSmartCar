@@ -17,10 +17,14 @@ public:
 	bool isCrosswalk(CrossWalk& line) const;
 	// 获取赛道
 	Track getTrack(std::vector<Line>& lines) const;
-	// 检测赛道
+	// 获取二值化图像
+	cv::Mat getBinaryFrame(cv::Mat* frame, cv::Rect ROI, int threshold) const;
+	// 检测
 	DetectResult detect(cv::Mat* frame) const;
-	//// 检测人行横道
-	//bool crosswalkDetect(cv::Mat* frame) const;
+	// 检测边线
+	std::vector<Line> getLines(cv::Mat* frame) const;
+	// 检测人行横道
+	bool hasCrosswalk(cv::Mat* binary) const;
 private:
 	int width;
 	int height;

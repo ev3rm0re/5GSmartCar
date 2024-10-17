@@ -50,40 +50,23 @@ Track LineDetector::getTrack(std::vector<Line>& lines) const {
 	return track;
 }
 
-// 边线检测
-DetectResult LineDetector::detect(cv::Mat* frame) const {
-	DetectResult result;
+cv::Mat LineDetector::getBinaryFrame(cv::Mat* frame, cv::Rect ROI, int threshold) const {
 	cv::Mat frame_copy = frame->clone();
-	cv::Mat frame_copy_c = frame->clone();
-
-	static int threshold = 160;
-	bool has_crosswalk = false;
-
-	// 提取ROI
-	cv::Mat line_roi, crosswalk_roi;
-	// 边线检测ROI
-	line_roi = frame_copy(cv::Rect(0, height / 3.0, width, height * 2.0 / 3.0));
-	// 人行横道检测ROI
-	crosswalk_roi = frame_copy_c(cv::Rect(width / 4.0, height / 4.0, width / 2.0, height * 3.0 / 4.0));
-
-	// 灰度化
-	cv::Mat gray, gray_c;
-	cv::cvtColor(line_roi, gray, cv::COLOR_BGR2GRAY);
-	cv::cvtColor(crosswalk_roi, gray_c, cv::COLOR_BGR2GRAY);
-
-	// 高斯滤波
+	cv::Mat roi = frame_copy(ROI);
+	cv::Mat gray;
+	cv::cvtColor(roi, gray, cv::COLOR_BGR2GRAY);
 	cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
-	cv::GaussianBlur(gray_c, gray_c, cv::Size(5, 5), 0);
-
-	// 二值化
-	cv::Mat binary, binary_c;
+	cv::Mat binary;
 	cv::threshold(gray, binary, threshold, 255, cv::THRESH_BINARY);
-	cv::threshold(gray_c, binary_c, threshold, 255, cv::THRESH_BINARY);
+	return binary;
+}
 
+bool LineDetector::hasCrosswalk(cv::Mat* binary) const {
+	bool has_crosswalk = false;
 	// 查找人行横道
 	std::vector<CrossWalk> crosswalks;
 	std::vector<std::vector<cv::Point>> contours;
-	cv::findContours(binary_c, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+	cv::findContours(*binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 	for (const auto& contour : contours) {
 		cv::RotatedRect rect = cv::minAreaRect(contour);
 		CrossWalk crosswalk(rect);
@@ -95,10 +78,13 @@ DetectResult LineDetector::detect(cv::Mat* frame) const {
 	if (crosswalks.size() > 1) {
 		has_crosswalk = true;
 	}
+	return has_crosswalk;
+}
 
+std::vector<Line> LineDetector::getLines(cv::Mat* binary) const {
 	// 查找边线
 	cv::Mat canny;
-	cv::Canny(binary, canny, 50, 150);
+	cv::Canny(*binary, canny, 50, 150);
 
 	std::vector<cv::Vec4i> linesP;
 	cv::HoughLinesP(canny, linesP, 1, CV_PI / 180, 50, 50, 10);
@@ -109,6 +95,25 @@ DetectResult LineDetector::detect(cv::Mat* frame) const {
 		if (!isLine(line)) continue;
 		lines.push_back(line);
 	}
+	return lines;
+}
+
+// 边线检测
+DetectResult LineDetector::detect(cv::Mat* frame) const {
+	DetectResult result;
+
+	static int threshold = 160;
+	
+
+	cv::Rect line_roi = cv::Rect(0, height / 3.0, width, height * 2.0 / 3.0);
+	cv::Rect crosswalk_roi = cv::Rect(width / 4.0, height / 4.0, width / 2.0, height * 3.0 / 4.0);
+
+	cv::Mat binary = getBinaryFrame(frame, line_roi, threshold);
+	cv::Mat binary_c = getBinaryFrame(frame, crosswalk_roi, threshold);
+
+	bool has_crosswalk = hasCrosswalk(&binary_c);
+
+	std::vector<Line> lines = getLines(&binary);
 
 	// 改变阈值
 	int current_threshold = threshold;
@@ -128,7 +133,6 @@ DetectResult LineDetector::detect(cv::Mat* frame) const {
 	}
 
 	if (lines.size() == 0) {
-		
 		result = { cv::Point2f(width / 2, height / 2), has_crosswalk };
 		return result;
 	}
@@ -156,7 +160,7 @@ DetectResult LineDetector::detect(cv::Mat* frame) const {
 				track.right_line.top,
 				track.right_line.bottom,
 				track.left_line.bottom
-		}}, cv::Scalar(255, 0, 0, 0.3));
+		}}, cv::Scalar(255, 0, 0, 0.1));
 	cv::line((*frame), track.left_line.top, track.left_line.bottom, cv::Scalar(0, 0, 255), 3);
 	cv::line((*frame), track.right_line.top, track.right_line.bottom, cv::Scalar(0, 0, 255), 3);
 	cv::circle((*frame), track.center, 5, cv::Scalar(0, 255, 0), -1);
