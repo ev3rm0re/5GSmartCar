@@ -85,12 +85,13 @@ void LineDetector::filterLines(std::vector<Line>* lines) const {
 }
 
 // 获取赛道
-void LineDetector::getTrack(std::vector<Line>& lines, std::vector<Track> tracks) const {
+void LineDetector::getTrack(std::vector<Line>& lines, Track track) const {
 	for (size_t i = 0; i < lines.size(); i++) {
 		for (size_t j = i + 1; j < lines.size(); j++) {
-			Track track(lines[i], lines[j]);
-			if (isTrack(track)) {
-				tracks.push_back(track);
+			Track track_(lines[i], lines[j]);
+			if (isTrack(track_)) {
+				track = track_;
+				return;
 			}
 		}
 	}
@@ -190,6 +191,13 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	for (const auto& line : lines) {
 		cv::line(*frame, line.top + cv::Point2f(0, height / 2.0), line.bottom + cv::Point2f(0, height / 2.0), cv::Scalar(255, 0, 0), 2);
 	}
+
+	Track track;
+	getTrack(lines, track);
+
+	cv::line(*frame, track.left_line.top + cv::Point2f(0, height / 2.0), track.left_line.bottom + cv::Point2f(0, height / 2.0), cv::Scalar(0, 0, 255), 2);
+	cv::line(*frame, track.right_line.top + cv::Point2f(0, height / 2.0), track.right_line.bottom + cv::Point2f(0, height / 2.0), cv::Scalar(0, 0, 255), 2);
+	cv::circle(*frame, track.center + cv::Point2f(0, height / 2.0), 5, cv::Scalar(0, 255, 0), -1);
 
 	threshChanger(cv::countNonZero(binary), &threshold, lines.size());
 
