@@ -10,9 +10,9 @@ int width = 300;
 int height = 200;
 
 void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    std::string video_path = "/home/pi/5G_ws/medias/output238.avi";
-    // cv::VideoCapture cap(video_path);
-    cv::VideoCapture cap(0, cv::CAP_V4L2);
+    std::string video_path = "/home/pi/5G_ws/medias/playground.mp4";
+    cv::VideoCapture cap(video_path);
+    // cv::VideoCapture cap(0, cv::CAP_V4L2);
     
     if (!cap.isOpened()) {
         std::cerr << "打开失败" << std::endl;
@@ -73,7 +73,7 @@ int main() {
     Controller controller(servo_pin, pwm_pin);
     LineDetector detector(width, height);
     std::atomic<bool> flag(false);
-    std::thread video_thread(imageProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
+    std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
     std::thread move_thread(mover, &controller, std::ref(flag));
     try {
         video_thread.join();

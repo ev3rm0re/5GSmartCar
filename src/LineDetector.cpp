@@ -99,7 +99,7 @@ std::vector<Line> LineDetector::getLines(cv::Mat* binary) const {
 }
 
 int LineDetector::getArrow(cv::Mat* frame) const {
-
+	return 0;
 }
 
 // 边线检测

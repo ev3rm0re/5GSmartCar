@@ -16,11 +16,11 @@ Controller::Controller(int servo_pin, int pwm_pin) {
     gpioSetMode(servo_pin, PI_OUTPUT);
     gpioSetPWMfrequency(servo_pin, 50);
     gpioSetPWMrange(servo_pin, 100);
-    gpioPWM(servo_pin, angleToDutyCycle(60));
+    gpioPWM(servo_pin, angleToDutyCycle(70));
     sleep(1);
-    gpioPWM(servo_pin, angleToDutyCycle(120));
+    gpioPWM(servo_pin, angleToDutyCycle(130));
     sleep(1);
-    gpioPWM(servo_pin, angleToDutyCycle(90));
+    gpioPWM(servo_pin, angleToDutyCycle(100));
     std::cout << "舵机初始化完成" << std::endl;
 
     // 初始化电机
@@ -54,14 +54,14 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
             flag.store(false, std::memory_order_release);
             detected_crosswalk = 1;
         }
-        if (i != 13000 && start == 0 && detected_crosswalk == 1) {
+        if (i != 13200 && (start == 0 || detected_crosswalk == 1)) {
             i += 100;
         };
         std::cout << "PWM值:" << i << std::endl;
         gpioPWM(pwm_pin, i);
-        if (i == 13000 && detected_crosswalk == 1) {
+        if (i == 13200) {
             start = 1;
-            i = 12800;
+            i = 13000;
         }
         usleep(200 * 1000);
         
@@ -82,11 +82,11 @@ void Controller::pidControl(double center, int width) const {
         error_angle = angle_outmin;
     }
 
-    double angle = 90 - error_angle;
+    double angle = 100 - error_angle;
     // angle = (angle - 90) * 1.2 + 90;
     last_error = error;
     gpioPWM(servo_pin, angleToDutyCycle(angle));
-    sleep(0.005);
+    usleep(200 * 1000);
     gpioPWM(servo_pin, angleToDutyCycle(angle));
 }
 
