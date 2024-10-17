@@ -22,9 +22,11 @@ public:
 	// 检测
 	DetectResult detect(cv::Mat* frame) const;
 	// 检测边线
-	std::vector<Line> getLines(cv::Mat* frame) const;
+	std::vector<Line> getLines(cv::Mat* binary) const;
 	// 检测人行横道
 	bool hasCrosswalk(cv::Mat* binary) const;
+	// 检测是否有箭头，及箭头方向
+	int getArrow(cv::Mat* frame) const;
 private:
 	int width;
 	int height;

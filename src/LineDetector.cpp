@@ -98,6 +98,10 @@ std::vector<Line> LineDetector::getLines(cv::Mat* binary) const {
 	return lines;
 }
 
+int LineDetector::getArrow(cv::Mat* frame) const {
+
+}
+
 // 边线检测
 DetectResult LineDetector::detect(cv::Mat* frame) const {
 	DetectResult result;

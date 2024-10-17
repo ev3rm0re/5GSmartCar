@@ -7,6 +7,11 @@
 // opencv
 #include <opencv2/opencv.hpp>
 
+const std::map<int, std::string> directions = {
+	{"直行", 0},
+	{"左变道", 1},
+	{"右变道", 2}
+};
 
 // 边线结构体
 struct Line : public std::vector<cv::Point> {
@@ -70,6 +75,7 @@ struct Track {
 	cv::Point2f center;
 };
 
+// 检测结果结构体
 struct DetectResult
 {
 	cv::Point2f center;
