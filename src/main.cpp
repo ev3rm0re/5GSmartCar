@@ -58,7 +58,7 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
 }
 
 void imageProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    std::string image_path = "/home/pi/5G_ws/medias/hard1.png";
+    std::string image_path = "/home/pi/5G_ws/medias/hard3.png";
     cv::Mat frame = cv::imread(image_path);
     if (frame.empty()) {
         std::cerr << "读取失败" << std::endl;

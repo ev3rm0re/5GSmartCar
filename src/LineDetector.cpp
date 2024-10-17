@@ -196,8 +196,7 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	Track track;
 	getTrack(lines, &track);
 	std::cout << "赛道宽度: " << track.width << " 赛道中心: " << track.center << std::endl;
-	cv::line(*frame, track.left_line.top + cv::Point2f(0, height / 2.0), track.right_line.top + cv::Point2f(0, height / 2.0), cv::Scalar(0, 255, 0), 2);
+	cv::line(*frame, track.left_line.center + cv::Point2f(0, height / 2.0), track.right_line.center + cv::Point2f(0, height / 2.0), cv::Scalar(0, 255, 0), 2);
 	cv::circle(*frame, track.center + cv::Point2f(0, height / 2.0), 5, cv::Scalar(0, 255, 0), -1);
 	threshChanger(cv::countNonZero(binary), &threshold, lines.size());
-
 }
