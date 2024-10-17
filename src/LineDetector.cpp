@@ -8,58 +8,95 @@ LineDetector::LineDetector(const int width, const int height) {
 
 // 判断是否为边线
 bool LineDetector::isLine(Line& line) const {
-	line.top.y = line.top.y + height / 2.0;
-	line.bottom.y = line.bottom.y + height / 2.0;
-	line.center.y = line.center.y + height / 2.0;
-	std::cout << "斜率: " << line.slope << "长度: " << line.length << std::endl;
+	std::cout << "斜率: " << line.slope << " 长度: " << line.length << std::endl;
+	std::cout << "中心: " << line.center << std::endl;
 	return std::abs(line.slope) > 0.2 && line.length > height / 4.0;
 }
 
 // 判断是否为赛道
 bool LineDetector::isTrack(const Track& track) const {
-	return track.right_line.center.x - track.left_line.center.x > width / 4.0 &&
+	return track.width > width / 4.0 && track.center.x > width / 4.0 && track.center.x < width * 3 / 4.0 &&
 		std::abs(track.left_line.center.y - track.right_line.center.y) < height / 3.0;
 }
 
 // 判断是否为人行横道
 bool LineDetector::isCrosswalk(CrossWalk& crosswalk) const {
-	crosswalk.top.x = crosswalk.top.x + width / 3.0;
-	crosswalk.bottom.x = crosswalk.bottom.x + width / 3.0;
-	crosswalk.center.x = crosswalk.center.x + width / 3.0;
-	crosswalk.top.y = crosswalk.top.y + height / 2.0;
-	crosswalk.bottom.y = crosswalk.bottom.y + height / 2.0;
-	crosswalk.center.y = crosswalk.center.y + height / 2.0;
 	return std::abs(crosswalk.slope) > 0.8 && crosswalk.area > width * height / 300.0 && 
 		crosswalk.height / crosswalk.width > 1 && crosswalk.height / crosswalk.width < 4;
 }
 
-// 获取赛道
-Track LineDetector::getTrack(std::vector<Line>& lines) const {
-	std::sort(lines.begin(), lines.end(), [](const Line& a, const Line& b) {
-		return a.center.x < b.center.x;
-		});
-	lines.front().top.x = (0 - lines.front().top.y) / lines.front().slope + lines.front().top.x;
-	lines.front().top.y = 0;
-	lines.front().bottom.x = (height - lines.front().bottom.y) / lines.front().slope + lines.front().bottom.x;
-	lines.front().bottom.y = height;
-	lines.back().top.x = (0 - lines.back().top.y) / lines.back().slope + lines.back().top.x;
-	lines.back().top.y = 0;
-	lines.back().bottom.x = (height - lines.back().bottom.y) / lines.back().slope + lines.back().bottom.x;
-	lines.back().bottom.y = height;
+// 过滤边线
+void LineDetector::filterLines(std::vector<Line>* lines) const {
+    if (lines->size() >= 2) {
+        std::vector<bool> toKeep(lines->size(), true);  // 用于标记保留哪些线
 
-	if (std::abs(lines.front().slope - lines.back().slope) < 0.2 && lines.front().slope > 0) {
-		lines.front().center = cv::Point2f(0, lines.back().center.y);
-		lines.front().slope = -lines.back().slope;
-	}
-	else if (std::abs(lines.front().slope - lines.back().slope) < 0.2 && lines.front().slope < 0) {
-		lines.back().center = cv::Point2f(0, lines.front().center.y);
-		lines.back().slope = -lines.front().slope;
-	}
+        for (size_t i = 0; i < lines->size(); ++i) {
+            if (!toKeep[i]) continue;  // 跳过已经删除的线
 
-	Track track(lines.front(), lines.back());
-	return track;
+            for (size_t j = i + 1; j < lines->size(); ++j) {
+                if (!toKeep[j]) continue;  // 跳过已经删除的线
+
+                if ((*lines)[i].slope < 0 && (*lines)[j].slope < 0) {
+                    // 两条线斜率为负，删除靠近中心的
+                    if ((*lines)[i].center.x < (*lines)[j].center.x) {
+                        toKeep[j] = false;  // 标记删除第 j 条
+                    } else {
+                        toKeep[i] = false;  // 标记删除第 i 条
+                        break;  // 当前 i 被删除，跳出内循环
+                    }
+                } else if ((*lines)[i].slope > 0 && (*lines)[j].slope > 0) {
+                    // 两条线斜率为正，删除靠近中心的
+                    if ((*lines)[i].center.x < (*lines)[j].center.x) {
+                        toKeep[i] = false;  // 标记删除第 i 条
+                        break;  // 当前 i 被删除，跳出内循环
+                    } else {
+                        toKeep[j] = false;  // 标记删除第 j 条
+                    }
+                }
+            }
+        }
+
+        // 实际删除操作
+        auto it = lines->begin();
+        for (size_t i = 0; i < toKeep.size(); ++i) {
+            if (!toKeep[i]) {
+                it = lines->erase(it);  // 删除被标记为 false 的线
+            } else {
+                ++it;
+            }
+        }
+    }
+
+	if (lines->size() == 1) {
+        if ((*lines)[0].center.x < width / 2.0) {
+			cv::Point newCenter = cv::Point(width, (*lines)[0].center.y);
+			cv::Point newTop = cv::Point(width + (*lines)[0].center.y / (*lines)[0].slope, 0);
+			Line newLine(std::vector<cv::Point>{newTop, newCenter});
+			newLine.center = newCenter;
+			lines->push_back(newLine);
+		} else {
+			cv::Point newCenter = cv::Point(0, (*lines)[0].center.y);
+			cv::Point newTop = cv::Point(0 + (*lines)[0].center.y / (*lines)[0].slope, 0);
+			Line newLine(std::vector<cv::Point>{newTop, newCenter});
+			newLine.center = newCenter;
+			lines->push_back(newLine);
+		}
+    }
 }
 
+// 获取赛道
+void LineDetector::getTrack(std::vector<Line>& lines, std::vector<Track> tracks) const {
+	for (size_t i = 0; i < lines.size(); i++) {
+		for (size_t j = i + 1; j < lines.size(); j++) {
+			Track track(lines[i], lines[j]);
+			if (isTrack(track)) {
+				tracks.push_back(track);
+			}
+		}
+	}
+}
+
+// 获取二值化图像
 cv::Mat LineDetector::getBinaryFrame(cv::Mat* frame, cv::Rect ROI, int threshold) const {
 	cv::Mat frame_copy = frame->clone();
 	cv::Mat roi = frame_copy(ROI);
@@ -71,6 +108,7 @@ cv::Mat LineDetector::getBinaryFrame(cv::Mat* frame, cv::Rect ROI, int threshold
 	return binary;
 }
 
+// 检测人行横道
 bool LineDetector::hasCrosswalk(cv::Mat* binary) const {
 	bool has_crosswalk = false;
 	// 查找人行横道
@@ -91,6 +129,7 @@ bool LineDetector::hasCrosswalk(cv::Mat* binary) const {
 	return has_crosswalk;
 }
 
+// 检测边线
 std::vector<Line> LineDetector::getLines(cv::Mat* binary) const {
 	// 查找边线
 	cv::Mat canny;
@@ -102,83 +141,57 @@ std::vector<Line> LineDetector::getLines(cv::Mat* binary) const {
 	std::vector<Line> lines;
 	for (const auto& lineP : linesP) {
 		Line line({ cv::Point(lineP[0], lineP[1]), cv::Point(lineP[2], lineP[3]) });
-		cv::line((*binary), line.top, line.bottom, cv::Scalar(255), 2);
 		if (!isLine(line)) continue;
 		lines.push_back(line);
 	}
 	return lines;
 }
 
+// 阈值调整
+void LineDetector::threshChanger(int white_count, int* threshold, int lines_size) const {
+	int current_threshold = *threshold;
+	if (white_count < width * height / 80.0 && lines_size == 0) {
+		*threshold -= 2;
+	}
+	else if (white_count < width * height / 100 && lines_size == 1) {
+		*threshold--;
+	}
+	else if (white_count > width * height / 15.0) {
+		*threshold++;
+	}
+	if (current_threshold != *threshold) {
+		std::cout << "阈值更新为: " << threshold << std::endl;
+	}
+}
+
+// 检测是否有箭头，及箭头方向
 int LineDetector::getArrow(cv::Mat* frame) const {
 	return 0;
 }
 
 // 边线检测
-DetectResult LineDetector::detect(cv::Mat* frame) const {
-	DetectResult result;
-
+void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	static int threshold = 160;
 	
-
 	cv::Rect line_roi = cv::Rect(0, height / 2.0, width, height / 2.0);
 	cv::Rect crosswalk_roi = cv::Rect(width / 4.0, height / 2.0, width / 2.0, height / 2.0);
 
 	cv::Mat binary = getBinaryFrame(frame, line_roi, threshold);
 	cv::Mat binary_c = getBinaryFrame(frame, crosswalk_roi, threshold);
+	cv::imshow("binary", binary);
 
 	bool has_crosswalk = hasCrosswalk(&binary_c);
 
+	result->center = cv::Point2f(width / 2.0, height / 2.0);
+	result->has_crosswalk = has_crosswalk;
+
 	std::vector<Line> lines = getLines(&binary);
-	cv::imshow("binary", binary);
-
-	// 改变阈值
-	int current_threshold = threshold;
-	int white_count = cv::countNonZero(binary);
-	if (white_count < width * height / 80.0 && lines.size() == 0) {
-		threshold -= 2;
-	}
-	else if (white_count < width * height / 100 && lines.size() == 1) {
-		threshold--;
-	}
-	else if (white_count > width * height / 15.0) {
-		threshold++;
+	filterLines(&lines);
+	for (const auto& line : lines) {
+		cv::line(*frame, line.top + cv::Point2f(0, height / 2.0), line.bottom + cv::Point2f(0, height / 2.0), cv::Scalar(255, 0, 0), 2);
 	}
 
-	if (current_threshold != threshold) {
-		std::cout << "车道线阈值更新为: " << threshold << std::endl;
-	}
+	threshChanger(cv::countNonZero(binary), &threshold, lines.size());
 
-	if (lines.size() == 0) {
-		result = { cv::Point2f(width / 2, height / 2), has_crosswalk };
-		return result;
-	}
-
-	// 筛选轨道
-	if (lines.size() == 1) {
-		if (lines[0].center.x < width / 2.0) {
-			lines.push_back(Line({ cv::Point(width, lines[0].center.y), cv::Point(width - lines[0].top.x, lines[0].top.y) }));
-		}
-		else {
-			lines.push_back(Line({ cv::Point(0, lines[0].center.y), cv::Point(width - lines[0].top.x, lines[0].top.y) }));
-		}
-	}
-
-	Track track;
-	if (lines.size() >= 2) {
-		track = getTrack(lines);
-	}
-
-	result = { track.center, has_crosswalk };
-
-	// 绘制赛道
-	// cv::fillPoly((*frame), std::vector<std::vector<cv::Point>>{{
-	// 		track.left_line.top,
-	// 			track.right_line.top,
-	// 			track.right_line.bottom,
-	// 			track.left_line.bottom
-	// 	}}, cv::Scalar(255, 0, 0, 0.1));
-	// cv::line((*frame), track.left_line.top, track.left_line.bottom, cv::Scalar(0, 0, 255), 3);
-	// cv::line((*frame), track.right_line.top, track.right_line.bottom, cv::Scalar(0, 0, 255), 3);
-	cv::circle((*frame), track.center, 5, cv::Scalar(0, 255, 0), -1);
-	return result;
+	
 }

@@ -27,6 +27,8 @@ Controller::Controller(int servo_pin, int pwm_pin) {
     gpioSetMode(pwm_pin, PI_OUTPUT);
     gpioSetPWMfrequency(pwm_pin, 200);
     gpioSetPWMrange(pwm_pin, 40000);
+    gpioPWM(pwm_pin, 12400);
+    sleep(1);
     std::cout << "电机初始化完成" << std::endl;
 }
 
@@ -64,7 +66,6 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
             i = 12800;
         }
         usleep(200 * 1000);
-        
     }
 }
 
@@ -86,7 +87,7 @@ void Controller::pidControl(double center, int width) const {
     // angle = (angle - 90) * 1.2 + 90;
     last_error = error;
     gpioPWM(servo_pin, angleToDutyCycle(angle));
-    usleep(200 * 1000);
+    usleep(2 * 1000);
     gpioPWM(servo_pin, angleToDutyCycle(angle));
 }
 

@@ -3,6 +3,7 @@
 #include <thread>
 #include <atomic>
 #include <time.h>
+#include <chrono>
 
 #include "LineDetector.hpp"
 #include "Controller.hpp"
@@ -11,9 +12,9 @@ int width = 300;
 int height = 200;
 
 void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    // std::string video_path = "/home/pi/5G_ws/medias/playground.mp4";
-    // cv::VideoCapture cap(video_path);
-    cv::VideoCapture cap(0, cv::CAP_V4L2);
+    std::string video_path = "/home/pi/5G_ws/medias/playground3.mp4";
+    cv::VideoCapture cap(video_path);
+    // cv::VideoCapture cap(0, cv::CAP_V4L2);
     
     if (!cap.isOpened()) {
         std::cerr << "打开失败" << std::endl;
@@ -31,16 +32,22 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
     // start = clock();
     while (cap.isOpened()) {
         cv::Mat frame;
+        std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
         cap >> frame;
         if (frame.empty()) break;
         // writer.write(frame);
         // end = clock();
         // if ((double)(end - start) / CLOCKS_PER_SEC > 180) break;
-
+        DetectResult result;
         cv::resize(frame, frame, cv::Size(width, height));
-        DetectResult result = detector.detect(&frame);
+        detector.detect(&frame, &result);
         flag.store(result.has_crosswalk, std::memory_order_release);
         controller.pidControl(result.center.x, width);
+
+        std::chrono::high_resolution_clock::time_point t4 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t4 - t1);
+        double fps = 1.0 / time_span.count();
+        cv::putText(frame, "FPS: " + std::to_string(fps), cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
         cv::imshow("frame", frame);
         int key = cv::waitKey(1);
         if (key == 27) break;
@@ -51,20 +58,19 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
 }
 
 void imageProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    std::string image_path = "/home/pi/5G_ws/medias/playground_debug.jpg";
+    std::string image_path = "/home/pi/5G_ws/medias/hard1.png";
     cv::Mat frame = cv::imread(image_path);
     if (frame.empty()) {
         std::cerr << "读取失败" << std::endl;
         return;
     }
+    DetectResult result;
     cv::resize(frame, frame, cv::Size(width, height));
-    DetectResult result = detector.detect(&frame);
+    detector.detect(&frame, &result);
     flag.store(result.has_crosswalk, std::memory_order_release);
-    std::cout << "center: " << result.center << std::endl;
     controller.pidControl(result.center.x, width);
     cv::imshow("frame", frame);
-    cv::waitKey(0);
-    cv::destroyAllWindows();
+    if (cv::waitKey(0) == 27) cv::destroyAllWindows();
 }
 
 void mover(Controller* controller, std::atomic<bool>& has_crosswalk) {
@@ -80,7 +86,7 @@ int main() {
     Controller controller(servo_pin, pwm_pin);
     LineDetector detector(width, height);
     std::atomic<bool> flag(false);
-    std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
+    std::thread video_thread(imageProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
     // std::thread move_thread(mover, &controller, std::ref(flag));
     try {
         video_thread.join();

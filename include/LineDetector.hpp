@@ -15,12 +15,16 @@ public:
 	bool isTrack(const Track& track) const;
 	// 判断是否为人行横道
 	bool isCrosswalk(CrossWalk& line) const;
+	// 过滤边线
+	void filterLines(std::vector<Line>* lines) const;
 	// 获取赛道
-	Track getTrack(std::vector<Line>& lines) const;
+	void getTrack(std::vector<Line>& lines, std::vector<Track> tracks) const;
 	// 获取二值化图像
 	cv::Mat getBinaryFrame(cv::Mat* frame, cv::Rect ROI, int threshold) const;
+	// 阈值调整
+	void threshChanger(int white_count, int* threshold, int lines_size) const;
 	// 检测
-	DetectResult detect(cv::Mat* frame) const;
+	void detect(cv::Mat* frame, DetectResult* result) const;
 	// 检测边线
 	std::vector<Line> getLines(cv::Mat* binary) const;
 	// 检测人行横道
