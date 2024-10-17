@@ -8,9 +8,9 @@
 #include <opencv2/opencv.hpp>
 
 const std::map<int, std::string> directions = {
-	{"直行", 0},
-	{"左变道", 1},
-	{"右变道", 2}
+	{0, "直行"},
+	{1, "左转"},
+	{2, "右转"}
 };
 
 // 边线结构体
