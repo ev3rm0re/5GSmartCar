@@ -8,10 +8,11 @@ LineDetector::LineDetector(const int width, const int height) {
 
 // 判断是否为边线
 bool LineDetector::isLine(Line& line) const {
-	line.top.y = line.top.y + height / 3.0;
-	line.bottom.y = line.bottom.y + height / 3.0;
-	line.center.y = line.center.y + height / 3.0;
-	return std::abs(line.slope) > std::sqrt(3) / 3.0 && line.length > height / 3.0;
+	line.top.y = line.top.y + height / 2.0;
+	line.bottom.y = line.bottom.y + height / 2.0;
+	line.center.y = line.center.y + height / 2.0;
+	std::cout << "斜率: " << line.slope << "长度: " << line.length << std::endl;
+	return std::abs(line.slope) > 0.2 && line.length > height / 4.0;
 }
 
 // 判断是否为赛道
@@ -25,9 +26,9 @@ bool LineDetector::isCrosswalk(CrossWalk& crosswalk) const {
 	crosswalk.top.x = crosswalk.top.x + width / 3.0;
 	crosswalk.bottom.x = crosswalk.bottom.x + width / 3.0;
 	crosswalk.center.x = crosswalk.center.x + width / 3.0;
-	crosswalk.top.y = crosswalk.top.y + height / 4.0;
-	crosswalk.bottom.y = crosswalk.bottom.y + height / 4.0;
-	crosswalk.center.y = crosswalk.center.y + height / 4.0;
+	crosswalk.top.y = crosswalk.top.y + height / 2.0;
+	crosswalk.bottom.y = crosswalk.bottom.y + height / 2.0;
+	crosswalk.center.y = crosswalk.center.y + height / 2.0;
 	return std::abs(crosswalk.slope) > 0.8 && crosswalk.area > width * height / 300.0 && 
 		crosswalk.height / crosswalk.width > 1 && crosswalk.height / crosswalk.width < 4;
 }
@@ -45,6 +46,15 @@ Track LineDetector::getTrack(std::vector<Line>& lines) const {
 	lines.back().top.y = 0;
 	lines.back().bottom.x = (height - lines.back().bottom.y) / lines.back().slope + lines.back().bottom.x;
 	lines.back().bottom.y = height;
+
+	if (std::abs(lines.front().slope - lines.back().slope) < 0.2 && lines.front().slope > 0) {
+		lines.front().center = cv::Point2f(0, lines.back().center.y);
+		lines.front().slope = -lines.back().slope;
+	}
+	else if (std::abs(lines.front().slope - lines.back().slope) < 0.2 && lines.front().slope < 0) {
+		lines.back().center = cv::Point2f(0, lines.front().center.y);
+		lines.back().slope = -lines.front().slope;
+	}
 
 	Track track(lines.front(), lines.back());
 	return track;
@@ -92,6 +102,7 @@ std::vector<Line> LineDetector::getLines(cv::Mat* binary) const {
 	std::vector<Line> lines;
 	for (const auto& lineP : linesP) {
 		Line line({ cv::Point(lineP[0], lineP[1]), cv::Point(lineP[2], lineP[3]) });
+		cv::line((*binary), line.top, line.bottom, cv::Scalar(255), 2);
 		if (!isLine(line)) continue;
 		lines.push_back(line);
 	}
@@ -109,8 +120,8 @@ DetectResult LineDetector::detect(cv::Mat* frame) const {
 	static int threshold = 160;
 	
 
-	cv::Rect line_roi = cv::Rect(0, height / 3.0, width, height * 2.0 / 3.0);
-	cv::Rect crosswalk_roi = cv::Rect(width / 4.0, height / 4.0, width / 2.0, height * 3.0 / 4.0);
+	cv::Rect line_roi = cv::Rect(0, height / 2.0, width, height / 2.0);
+	cv::Rect crosswalk_roi = cv::Rect(width / 4.0, height / 2.0, width / 2.0, height / 2.0);
 
 	cv::Mat binary = getBinaryFrame(frame, line_roi, threshold);
 	cv::Mat binary_c = getBinaryFrame(frame, crosswalk_roi, threshold);
@@ -118,6 +129,7 @@ DetectResult LineDetector::detect(cv::Mat* frame) const {
 	bool has_crosswalk = hasCrosswalk(&binary_c);
 
 	std::vector<Line> lines = getLines(&binary);
+	cv::imshow("binary", binary);
 
 	// 改变阈值
 	int current_threshold = threshold;
@@ -159,14 +171,14 @@ DetectResult LineDetector::detect(cv::Mat* frame) const {
 	result = { track.center, has_crosswalk };
 
 	// 绘制赛道
-	cv::fillPoly((*frame), std::vector<std::vector<cv::Point>>{{
-			track.left_line.top,
-				track.right_line.top,
-				track.right_line.bottom,
-				track.left_line.bottom
-		}}, cv::Scalar(255, 0, 0, 0.1));
-	cv::line((*frame), track.left_line.top, track.left_line.bottom, cv::Scalar(0, 0, 255), 3);
-	cv::line((*frame), track.right_line.top, track.right_line.bottom, cv::Scalar(0, 0, 255), 3);
+	// cv::fillPoly((*frame), std::vector<std::vector<cv::Point>>{{
+	// 		track.left_line.top,
+	// 			track.right_line.top,
+	// 			track.right_line.bottom,
+	// 			track.left_line.bottom
+	// 	}}, cv::Scalar(255, 0, 0, 0.1));
+	// cv::line((*frame), track.left_line.top, track.left_line.bottom, cv::Scalar(0, 0, 255), 3);
+	// cv::line((*frame), track.right_line.top, track.right_line.bottom, cv::Scalar(0, 0, 255), 3);
 	cv::circle((*frame), track.center, 5, cv::Scalar(0, 255, 0), -1);
 	return result;
 }

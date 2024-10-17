@@ -54,14 +54,14 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
             flag.store(false, std::memory_order_release);
             detected_crosswalk = 1;
         }
-        if (i != 13200 && (start == 0 || detected_crosswalk == 1)) {
+        if (i != 12900 && (start == 0 || detected_crosswalk == 1)) {
             i += 100;
         };
         std::cout << "PWM值:" << i << std::endl;
         gpioPWM(pwm_pin, i);
-        if (i == 13200) {
+        if (i == 12900) {
             start = 1;
-            i = 13000;
+            i = 12800;
         }
         usleep(200 * 1000);
         
