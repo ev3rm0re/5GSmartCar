@@ -8,8 +8,6 @@ LineDetector::LineDetector(const int width, const int height) {
 
 // 判断是否为边线
 bool LineDetector::isLine(Line& line) const {
-	std::cout << "斜率: " << line.slope << " 长度: " << line.length << std::endl;
-	std::cout << "中心: " << line.center << std::endl;
 	return std::abs(line.slope) > 0.2 && line.length > height / 4.0;
 }
 
@@ -152,16 +150,16 @@ std::vector<Line> LineDetector::getLines(cv::Mat* binary) const {
 void LineDetector::threshChanger(int white_count, int* threshold, int lines_size) const {
 	int current_threshold = *threshold;
 	if (white_count < width * height / 80.0 && lines_size == 0) {
-		*threshold -= 2;
+		(*threshold) -= 2;
 	}
 	else if (white_count < width * height / 100 && lines_size == 1) {
-		*threshold--;
+		(*threshold)--;
 	}
 	else if (white_count > width * height / 15.0) {
-		*threshold++;
+		(*threshold)++;
 	}
 	if (current_threshold != *threshold) {
-		std::cout << "阈值更新为: " << threshold << std::endl;
+		std::cout << "阈值更新为: " << *threshold << std::endl;
 	}
 }
 
@@ -188,6 +186,7 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 
 	std::vector<Line> lines = getLines(&binary);
 	filterLines(&lines);
+	threshChanger(cv::countNonZero(binary), &threshold, lines.size());
 	for (const auto& line : lines) {
 		cv::circle(*frame, line.center + cv::Point2f(0, height / 2.0), 5, cv::Scalar(255, 0, 0), -1);
 		// cv::line(*frame, line.top + cv::Point2f(0, height / 2.0), line.bottom + cv::Point2f(0, height / 2.0), cv::Scalar(255, 0, 0), 2);
@@ -195,8 +194,11 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 
 	Track track;
 	getTrack(lines, &track);
-	std::cout << "赛道宽度: " << track.width << " 赛道中心: " << track.center << std::endl;
+	if (track.width == 0) {
+		std::cout << "未检测到赛道" << std::endl;
+		return;
+	}
+	// std::cout << "赛道宽度: " << track.width << " 赛道中心: " << track.center << std::endl;
 	cv::line(*frame, track.left_line.center + cv::Point2f(0, height / 2.0), track.right_line.center + cv::Point2f(0, height / 2.0), cv::Scalar(0, 255, 0), 2);
 	cv::circle(*frame, track.center + cv::Point2f(0, height / 2.0), 5, cv::Scalar(0, 255, 0), -1);
-	threshChanger(cv::countNonZero(binary), &threshold, lines.size());
 }

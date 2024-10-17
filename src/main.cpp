@@ -86,7 +86,7 @@ int main() {
     Controller controller(servo_pin, pwm_pin);
     LineDetector detector(width, height);
     std::atomic<bool> flag(false);
-    std::thread video_thread(imageProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
+    std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
     // std::thread move_thread(mover, &controller, std::ref(flag));
     try {
         video_thread.join();
