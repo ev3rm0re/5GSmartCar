@@ -10,7 +10,7 @@ void moveforward(int pwm_pin) {
     gpioSetPWMrange(pwm_pin, 40000);
     std::cout << "电机初始化完成" << std::endl;
     std::cout << "前进!!!" << std::endl;
-    for (int i = 12000; i < 13500; i += 100) {
+    for (int i = 12000; i < 13000; i += 100) {
         std::cout << "PWM值:" << i << std::endl;
         gpioPWM(pwm_pin, i);
         usleep(200 * 1000);

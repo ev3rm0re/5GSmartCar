@@ -10,7 +10,8 @@ LineDetector::LineDetector(const int width, const int height) {
 
 // 判断是否为边线
 bool LineDetector::isLine(Line& line) const {
-	return line.length / line.width >= 2 && line.area > width * height / 200.0 && std::abs(line.angle - 90.0) < 80.0;
+	return line.length / line.width >= 2 && line.area > width * height / 200.0 && 
+		std::abs(line.angle - 90.0) < 80.0 && std::abs(line.center.x - width / 2.0) >= width / 4.0;
 }
 
 // 判断是否为赛道
@@ -19,9 +20,11 @@ bool LineDetector::isTrack(const Track& track) const {
 		std::abs(track.left_line.center.y - track.right_line.center.y) < height / 2.0;
 }
 
+// 判断是否为人行横道
 bool LineDetector::isCrosswalk(Line& line) const {
-	return line.length / line.width >= 1.0 && line.length / line.width <= 4.0 && 
-	line.area > width * height / 200.0 && std::abs(line.angle  - 90.0) < 75.0;
+	return line.length / line.width >= 0.2 && line.length / line.width <= 2.0 && 
+	line.area > width * height / 400.0 && std::abs(line.angle  - 90.0) < 75.0 && 
+	std::abs(line.center.x - width / 3.0) < width * 2.0 / 9.0;
 }
 
 // 获取赛道
@@ -40,15 +43,20 @@ std::vector<Track> LineDetector::getTrack(const std::vector<Line>& lines) const 
 
 // 边线检测
 cv::Point2f LineDetector::detect(cv::Mat* frame) const {
-	static int threshold = 140;
+	static int threshold = 160;
 	
 	// 提取ROI
 	cv::Mat roi_frame;
-	roi_frame = (*frame)(cv::Rect(0, height * 2.0 / 3.0, width, height / 3.0));
+	roi_frame = (*frame)(cv::Rect(0, height * 3.0 / 5.0, width, height * 2.0 / 5.0));
 	
 	// 灰度化
 	cv::Mat gray_frame;
 	cv::cvtColor(roi_frame, gray_frame, cv::COLOR_BGR2GRAY);
+
+	// 高斯滤波
+	cv::Mat gauss_frame;
+	cv::GaussianBlur(gray_frame, gauss_frame, cv::Size(3, 3), 0);
+	cv::imshow("line_gauss", gauss_frame);
 
 	// 直方图均衡化
 	// cv::Mat equalized_frame;
@@ -57,7 +65,7 @@ cv::Point2f LineDetector::detect(cv::Mat* frame) const {
 
 	// 二值化
 	cv::Mat binary_frame;
-	cv::threshold(gray_frame, binary_frame, threshold, 255, cv::THRESH_BINARY_INV);
+	cv::threshold(gauss_frame, binary_frame, threshold, 255, cv::THRESH_BINARY_INV);
 	cv::imshow("binary_frame", binary_frame);
 
 	// 查找轮廓
@@ -73,7 +81,6 @@ cv::Point2f LineDetector::detect(cv::Mat* frame) const {
 		if (isLine(line)) {
 			lines.push_back(line);
 			cv::line(roi_frame, line.top, line.bottom, cv::Scalar(255, 0, 0), 2);
-			cv::putText(roi_frame, "Line", line.center, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 0, 0), 2);
 		}
 	}
 	
@@ -84,15 +91,16 @@ cv::Point2f LineDetector::detect(cv::Mat* frame) const {
 	if (white_count < width * height / 80.0 && lines.size() == 0) {
 		threshold += 2;
 	}
-	else if (white_count < width * height / 100 && lines.size() == 1) {
+	if (white_count < width * height / 150.0 && lines.size() == 1) {
 		threshold++;
 	}
-	else if (white_count > width * height / 10.0) {
+	if (white_count > width * height / 20.0) {
 		threshold--;
 	}
 
 	if (current_threshold != threshold) {
-		std::cout << "阈值更新为: " << threshold << std::endl;
+		std::cout << "边线白色区域: " << white_count << std::endl;
+		std::cout << "边线检测阈值更新为: " << threshold << std::endl;
 	}
 
 	if (lines.size() == 0) {
@@ -138,22 +146,27 @@ cv::Point2f LineDetector::detect(cv::Mat* frame) const {
 }
 
 bool LineDetector::crosswalkDetect(cv::Mat* frame) const {
-	static int threshold = 140;
+	static int threshold = 160;
 	int cross_count = 0;
 	
 	cv::Mat frame_copy = frame->clone();
 
 	// 提取ROI
 	cv::Mat roi_frame;
-	roi_frame = frame_copy(cv::Rect(0, height * 2.0 / 3.0, width, height / 3.0));
+	roi_frame = frame_copy(cv::Rect(width / 6.0, height * 3.0 / 5.0, width * 4.0 / 6.0, height * 2.0 / 5.0));
 
 	// 灰度化
 	cv::Mat gray_frame;
 	cv::cvtColor(roi_frame, gray_frame, cv::COLOR_BGR2GRAY);
 
+	// 高斯滤波
+	cv::Mat gauss_frame;
+	cv::GaussianBlur(gray_frame, gauss_frame, cv::Size(3, 3), 0);
+	cv::imshow("cross_gauss_frame", gauss_frame);
+
 	// 二值化
 	cv::Mat binary_frame;
-	cv::threshold(gray_frame, binary_frame, threshold, 255, cv::THRESH_BINARY_INV);
+	cv::threshold(gauss_frame, binary_frame, threshold, 255, cv::THRESH_BINARY_INV);
 	cv::imshow("cross_binary_frame", binary_frame);
 
 	// 查找轮廓
@@ -161,26 +174,35 @@ bool LineDetector::crosswalkDetect(cv::Mat* frame) const {
 	cv::findContours(binary_frame, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
 	// 筛选人行横道线
+	std::vector<Line> crosswalks;
 	for (const auto& contour : contours) {
 		if (cv::contourArea(contour) < width * height / 400.0) continue;
 		cv::RotatedRect rect = cv::minAreaRect(contour);
-		Line line(rect);
-		if (isCrosswalk(line)) {
-			cv::line(roi_frame, line.top, line.bottom, cv::Scalar(0, 0, 255), 2);
+		Line crosswalk(rect);
+		if (isCrosswalk(crosswalk)) {
+			cv::line(roi_frame, crosswalk.top, crosswalk.bottom, cv::Scalar(0, 0, 255), 2);
+			crosswalks.push_back(crosswalk);
 			cross_count++;
 		}
 	}
 
+	int current_threshold = threshold;
+
 	// 计算二值化图像白色区域的个数
 	int white_count = cv::countNonZero(binary_frame);
-	if (white_count < width * height / 80.0) {
+	if (white_count < width * height / 100.0) {
 		threshold += 2;
 	}
-	else if (white_count < width * height / 100) {
+	if (white_count < width * height / 100 && crosswalks.size() == 1) {
 		threshold++;
 	}
-	else if (white_count > width * height / 10.0) {
+	if (white_count > width * height / 20.0) {
 		threshold--;
+	}
+
+	if (current_threshold != threshold) {
+		std::cout << "人行横道白色区域: " << white_count << std::endl;
+		std::cout << "人行横道检测阈值更新为: " << threshold << std::endl;
 	}
 
 	// cv::imshow("cross_frame", roi_frame);
