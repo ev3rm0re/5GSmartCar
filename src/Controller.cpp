@@ -40,7 +40,8 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
             std::cout << "检测到斑马线" << std::endl;
             i = 12400;
             gpioPWM(pwm_pin, i);
-
+            system("aplay /home/pi/Code/5G_ws/medias/dz-banmaxian.wav");
+            sleep(6);
             flag.store(false, std::memory_order_release);
             detected_crosswalk = 1;
         }

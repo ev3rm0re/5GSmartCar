@@ -81,7 +81,7 @@ int main() {
     system("sudo killall pigpiod");
   	system("sudo cp /home/pi/.Xauthority /root/");
   	sleep(2);
-
+    system("aplay /home/pi/Code/5G_ws/medias/dz-banmaxian.wav");
   	int servo_pin = 12;
   	int pwm_pin = 13;
     Controller controller(servo_pin, pwm_pin);
