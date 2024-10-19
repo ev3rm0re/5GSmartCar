@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <iostream>
 #include <atomic>
-#include <SFML/Audio.hpp>
 
 Controller::Controller(int servo_pin, int pwm_pin) {
     if (gpioInitialise() < 0) {
@@ -41,15 +40,6 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
             std::cout << "检测到斑马线" << std::endl;
             i = 12400;
             gpioPWM(pwm_pin, i);
-            sf::SoundBuffer soundbuffer;
-            if (!soundbuffer.loadFromFile("/home/pi/Code/5G_ws/medias/dz-banmaxian.wav")) {
-                std::cerr << "打开文件失败" << std::endl;
-                continue;
-            }
-            sf::Sound sound;
-            sound.setBuffer(soundbuffer);
-            sound.play();
-            sleep(5);
 
             flag.store(false, std::memory_order_release);
             detected_crosswalk = 1;

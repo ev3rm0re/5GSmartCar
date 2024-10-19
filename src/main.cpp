@@ -4,7 +4,6 @@
 #include <atomic>
 #include <time.h>
 #include <chrono>
-#include <SFML/Audio.hpp>
 
 #include "LineDetector.hpp"
 #include "Controller.hpp"
@@ -79,20 +78,10 @@ void mover(Controller* controller, std::atomic<bool>& has_crosswalk) {
 }
 
 int main() {
-    system("sudo pulseaudio --start");
     system("sudo killall pigpiod");
   	system("sudo cp /home/pi/.Xauthority /root/");
-
   	sleep(2);
-    sf::SoundBuffer soundbuffer;
-    if (!soundbuffer.loadFromFile("/home/pi/Code/5G_ws/medias/dz-banmaxian.wav")) {
-        std::cerr << "打开文件失败" << std::endl;
-        return 1;
-    }
-    sf::Sound sound;
-    sound.setBuffer(soundbuffer);
-    sound.play();
-    sleep(5);
+
   	int servo_pin = 12;
   	int pwm_pin = 13;
     Controller controller(servo_pin, pwm_pin);
