@@ -27,8 +27,6 @@ Controller::Controller(int servo_pin, int pwm_pin) {
     gpioSetMode(pwm_pin, PI_OUTPUT);
     gpioSetPWMfrequency(pwm_pin, 200);
     gpioSetPWMrange(pwm_pin, 40000);
-    gpioPWM(pwm_pin, 12400);
-    sleep(1);
     std::cout << "电机初始化完成" << std::endl;
 }
 
