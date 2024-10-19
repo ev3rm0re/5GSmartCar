@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <iostream>
 #include <atomic>
-#include <SFML/Audio.hpp>
 
 Controller::Controller(int servo_pin, int pwm_pin) {
     if (gpioInitialise() < 0) {
