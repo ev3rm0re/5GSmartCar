@@ -12,9 +12,9 @@ int width = 300;
 int height = 200;
 
 void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    std::string video_path = "/home/pi/5G_ws/medias/playground3.mp4";
-    cv::VideoCapture cap(video_path);
-    // cv::VideoCapture cap(0, cv::CAP_V4L2);
+    // std::string video_path = "/home/pi/Code/5G_ws/medias/playground3.mp4";
+    // cv::VideoCapture cap(video_path);
+    cv::VideoCapture cap(0, cv::CAP_V4L2);
     
     if (!cap.isOpened()) {
         std::cerr << "打开失败" << std::endl;
@@ -58,7 +58,7 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
 }
 
 void imageProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    std::string image_path = "/home/pi/5G_ws/medias/hard3.png";
+    std::string image_path = "/home/pi/Code/5G_ws/medias/hard3.png";
     cv::Mat frame = cv::imread(image_path);
     if (frame.empty()) {
         std::cerr << "读取失败" << std::endl;
@@ -87,10 +87,10 @@ int main() {
     LineDetector detector(width, height);
     std::atomic<bool> flag(false);
     std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
-    // std::thread move_thread(mover, &controller, std::ref(flag));
+    std::thread move_thread(mover, &controller, std::ref(flag));
     try {
         video_thread.join();
-        // move_thread.join();
+        move_thread.join();
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }

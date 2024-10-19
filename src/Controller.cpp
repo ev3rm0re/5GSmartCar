@@ -44,7 +44,7 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
             i = 12400;
             gpioPWM(pwm_pin, i);
             sf::SoundBuffer soundbuffer;
-            if (!soundbuffer.loadFromFile("/home/pi/5G_ws/medias/dz-banmaxian.wav")) {
+            if (!soundbuffer.loadFromFile("/home/pi/Code/5G_ws/medias/dz-banmaxian.wav")) {
                 std::cerr << "打开文件失败" << std::endl;
                 continue;
             }
