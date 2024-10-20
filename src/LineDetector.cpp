@@ -180,9 +180,8 @@ int LineDetector::getArrow(cv::Mat* frame) const {
 	// 使用onnx模型识别箭头
 	cv::Mat frame_copy = frame->clone();
 	cv::resize(frame_copy, frame_copy, cv::Size(50, 50));
-	cv::cvtColor(frame_copy, frame_copy, cv::COLOR_BGR2GRAY);
 	frame_copy = frame_copy / 255.0;
-	const std::string model_path = "/home/pi/Code/5G_ws/models/arrow_model.onnx";
+	const std::string model_path = "/home/pi/Code/5G_ws/models/arrow_yolo.onnx";
 	cv::dnn::Net net = cv::dnn::readNetFromONNX(model_path);
 	if (net.empty()) {
 		std::cerr << "模型加载失败" << std::endl;
@@ -235,7 +234,7 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 		std::cout << "箭头区域: " << arrow_roi << std::endl;
 		arrow_frame = arrow_frame(arrow_roi);
 		cv::imshow("arrow", arrow_frame);
-		cv::imwrite("/home/pi/Code/5G_ws/medias/arrows/arrow0-" + std::to_string(arrow_frame_count++) + ".jpg", arrow_frame);
+		// cv::imwrite("/home/pi/Code/5G_ws/medias/arrows/arrow0-" + std::to_string(arrow_frame_count++) + ".jpg", arrow_frame);
 		int arrow = getArrow(&arrow_frame);
 		std::cout << "箭头方向: " << arrow << std::endl;
 	}
