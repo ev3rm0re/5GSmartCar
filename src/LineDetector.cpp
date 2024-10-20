@@ -1,7 +1,7 @@
 #include "Line.hpp"
 #include "LineDetector.hpp"
 
-#include <opencv2/xfeatures2d.hpp>
+#include <opencv2/dnn.hpp>
 
 LineDetector::LineDetector(const int width, const int height) {
 	this->width = width;
@@ -175,15 +175,46 @@ void LineDetector::threshChanger(int white_count, int* threshold, int lines_size
 
 int LineDetector::getArrow(cv::Mat* frame) const {
     // TODO: 识别箭头
-	// 思路: 调用python，使用onnx模型识别箭头
+	// 使用onnx模型识别箭头
+	cv::Mat frame_copy = frame->clone();
+	cv::resize(frame_copy, frame_copy, cv::Size(20, 28));
+	cv::cvtColor(frame_copy, frame_copy, cv::COLOR_BGR2GRAY);
+	frame_copy = frame_copy / 255.0;
+	const std::string model_path = "/home/pi/Code/5G_ws/models/mlp.onnx";
+	cv::dnn::Net net = cv::dnn::readNetFromONNX(model_path);
+	if (net.empty()) {
+		std::cerr << "模型加载失败" << std::endl;
+		return -1;
+	}
+
+	cv::Mat blob;
+	cv::dnn::blobFromImage(frame_copy, blob);
+	net.setInput(blob);
+	cv::Mat outputs = net.forward();
+
+	// softmax
+	float max_prob = std::max_element(outputs.begin<float>(), outputs.end<float>()) - outputs.begin<float>();
+	cv::Mat softmax_prob;
+	cv::exp(outputs - max_prob, softmax_prob);
+	float sum = cv::sum(softmax_prob)[0];
+	softmax_prob /= sum;
+
+	// 获取最大概率值
+	double confidence;
+	cv::Point class_id_point;
+	cv::minMaxLoc(softmax_prob, nullptr, &confidence, nullptr, &class_id_point);
+	int label_id = class_id_point.x;
+	std::cout << "箭头方向: " << label_id << " 置信度: " << confidence << std::endl;
+	return label_id;
 }
 
 // 边线检测
 void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	static int threshold = 160;
+	int roi_y = height / 4.0;
 	
-	cv::Rect line_roi = cv::Rect(0, height / 4.0, width, height * 3.0 / 4.0);
-	cv::Rect crosswalk_roi = cv::Rect(width / 4.0, height / 4.0, width / 2.0, height * 3.0 / 4.0);
+	cv::Rect line_roi = cv::Rect(0, roi_y, width, height - roi_y);
+	cv::Rect crosswalk_roi = cv::Rect(width / 4.0, roi_y, width / 2.0, height - roi_y);
 
 	cv::Mat binary = getBinaryFrame(frame, line_roi, threshold);
 	cv::Mat binary_c = getBinaryFrame(frame, crosswalk_roi, threshold);
@@ -208,7 +239,7 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	filterLines(&lines);
 	threshChanger(cv::countNonZero(binary), &threshold, lines.size());
 	for (const auto& line : lines) {
-		cv::circle(*frame, line.center + cv::Point2f(0, height / 2.0), 5, cv::Scalar(255, 0, 0), -1);
+		cv::circle(*frame, line.center + cv::Point2f(0, roi_y), 5, cv::Scalar(255, 0, 0), -1);
 		// cv::line(*frame, line.top + cv::Point2f(0, height / 2.0), line.bottom + cv::Point2f(0, height / 2.0), cv::Scalar(255, 0, 0), 2);
 	}
 
@@ -220,6 +251,6 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	}
 	result->center = track.center;
 	// std::cout << "赛道宽度: " << track.width << " 赛道中心: " << track.center << std::endl;
-	cv::line(*frame, track.left_line.center + cv::Point2f(0, height / 2.0), track.right_line.center + cv::Point2f(0, height / 2.0), cv::Scalar(0, 255, 0), 2);
-	cv::circle(*frame, track.center + cv::Point2f(0, height / 2.0), 5, cv::Scalar(0, 255, 0), -1);
+	cv::line(*frame, track.left_line.center + cv::Point2f(0, roi_y), track.right_line.center + cv::Point2f(0, roi_y), cv::Scalar(0, 255, 0), 2);
+	cv::circle(*frame, track.center + cv::Point2f(0, roi_y), 5, cv::Scalar(0, 255, 0), -1);
 }
