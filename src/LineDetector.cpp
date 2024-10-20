@@ -1,6 +1,8 @@
 #include "Line.hpp"
 #include "LineDetector.hpp"
 
+#include <opencv2/xfeatures2d.hpp>
+
 LineDetector::LineDetector(const int width, const int height) {
 	this->width = width;
 	this->height = height;
@@ -108,7 +110,7 @@ cv::Mat LineDetector::getBinaryFrame(cv::Mat* frame, cv::Rect ROI, int threshold
 }
 
 // 检测人行横道
-bool LineDetector::hasCrosswalk(cv::Mat* binary) const {
+bool LineDetector::hasCrosswalk(cv::Mat* binary, cv::Rect* arrow_roi) const {
 	bool has_crosswalk = false;
 	// 查找人行横道
 	std::vector<CrossWalk> crosswalks;
@@ -124,7 +126,15 @@ bool LineDetector::hasCrosswalk(cv::Mat* binary) const {
 
 	if (crosswalks.size() > 1) {
 		has_crosswalk = true;
+		cv::Point2f max_crosswalk_top = crosswalks[0].top;
+		for (size_t i = 1; i < crosswalks.size(); i++) {
+			if (crosswalks[i].top.y > max_crosswalk_top.y) {
+				max_crosswalk_top = crosswalks[i].top;
+			}
+		}
+		(*arrow_roi).height = max_crosswalk_top.y;
 	}
+
 	return has_crosswalk;
 }
 
@@ -163,23 +173,33 @@ void LineDetector::threshChanger(int white_count, int* threshold, int lines_size
 	}
 }
 
-// 检测是否有箭头，及箭头方向
 int LineDetector::getArrow(cv::Mat* frame) const {
-	return 0;
+    // TODO: 识别箭头
+	// 思路: 调用python，使用onnx模型识别箭头
 }
 
 // 边线检测
 void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	static int threshold = 160;
 	
-	cv::Rect line_roi = cv::Rect(0, height / 2.0, width, height / 2.0);
-	cv::Rect crosswalk_roi = cv::Rect(width / 4.0, height / 2.0, width / 2.0, height / 2.0);
+	cv::Rect line_roi = cv::Rect(0, height / 4.0, width, height * 3.0 / 4.0);
+	cv::Rect crosswalk_roi = cv::Rect(width / 4.0, height / 4.0, width / 2.0, height * 3.0 / 4.0);
 
 	cv::Mat binary = getBinaryFrame(frame, line_roi, threshold);
 	cv::Mat binary_c = getBinaryFrame(frame, crosswalk_roi, threshold);
 	cv::imshow("binary", binary);
 
-	bool has_crosswalk = hasCrosswalk(&binary_c);
+	cv::Rect arrow_roi = cv::Rect(width / 3.0, 0, width / 3.0, height / 2.0);;
+	bool has_crosswalk = hasCrosswalk(&binary_c, &arrow_roi);
+	arrow_roi.height = arrow_roi.height + crosswalk_roi.y + 10;
+	if (has_crosswalk) {
+		std::cout << "检测到人行横道" << std::endl;
+		cv::Mat arrow_frame = frame->clone();
+		std::cout << "箭头区域: " << arrow_roi << std::endl;
+		arrow_frame = arrow_frame(arrow_roi);
+		int arrow = getArrow(&arrow_frame);
+		std::cout << "箭头方向: " << arrow << std::endl;
+	}
 
 	result->center = cv::Point2f(width / 2.0, height / 2.0);
 	result->has_crosswalk = has_crosswalk;

@@ -32,25 +32,24 @@ Controller::Controller(int servo_pin, int pwm_pin) {
 void Controller::moveforward(std::atomic<bool>& flag) const {
     std::cout << "前进!!!" << std::endl;
     sleep(5);
-    int i = 12400;
+    int i = 12600;
     int start = 0;
     int detected_crosswalk = 0;
     while (true) {
         if (flag.load(std::memory_order_acquire) == true && detected_crosswalk == 0) {
-            std::cout << "检测到斑马线" << std::endl;
-            i = 12400;
+            i = 12600;
             gpioPWM(pwm_pin, i);
             system("aplay /home/pi/Code/5G_ws/medias/dz-banmaxian.wav");
             sleep(6);
             flag.store(false, std::memory_order_release);
             detected_crosswalk = 1;
         }
-        if (i != 12900 && (start == 0 || detected_crosswalk == 1)) {
+        if (i != 13000 && (start == 0 || detected_crosswalk == 1)) {
             i += 100;
         };
         std::cout << "PWM值:" << i << std::endl;
         gpioPWM(pwm_pin, i);
-        if (i == 12900) {
+        if (i == 13000) {
             start = 1;
             i = 12800;
         }
