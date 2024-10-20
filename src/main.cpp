@@ -12,7 +12,7 @@ int width = 300;
 int height = 200;
 
 void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    std::string video_path = "/home/pi/Code/5G_ws/medias/arrow1.avi";
+    std::string video_path = "/home/pi/Code/5G_ws/medias/arrow.avi";
     cv::VideoCapture cap(video_path);
     // cv::VideoCapture cap(0, cv::CAP_V4L2);
     if (!cap.isOpened()) {

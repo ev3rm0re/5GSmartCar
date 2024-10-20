@@ -2,6 +2,7 @@
 #include "LineDetector.hpp"
 
 #include <opencv2/dnn.hpp>
+#include <chrono>
 
 LineDetector::LineDetector(const int width, const int height) {
 	this->width = width;
@@ -21,9 +22,9 @@ bool LineDetector::isTrack(const Track& track) const {
 
 // 判断是否为人行横道
 bool LineDetector::isCrosswalk(CrossWalk& crosswalk) const {
-	return std::abs(crosswalk.slope) > 0.6 && 
-		crosswalk.area > width * height / 600.0 && crosswalk.area < width * height / 100.0 && 
-		crosswalk.height / crosswalk.width < 3 && crosswalk.height / crosswalk.width > 0.5;
+	return std::abs(crosswalk.slope) > 0.5 && 
+		crosswalk.area > width * height / 300 && crosswalk.area < width * height / 100.0 && 
+		crosswalk.height / crosswalk.width < 3 && crosswalk.height / crosswalk.width > 0.2;
 }
 
 // 过滤边线
@@ -191,7 +192,10 @@ int LineDetector::getArrow(cv::Mat* frame) const {
 	cv::Mat blob;
 	cv::dnn::blobFromImage(frame_copy, blob);
 	net.setInput(blob);
+	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 	cv::Mat outputs = net.forward();
+	std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
 
 	int max_index = 0;
 	float max_value = 0.0;
@@ -202,12 +206,14 @@ int LineDetector::getArrow(cv::Mat* frame) const {
 		}
 	}
 
-	std::cout << "********ONNX输出********" << std::endl << outputs << std::endl;
+	std::cout << "********ONNX输出********" << std::endl << outputs << std::endl 
+			<< "推理时间: " << time_span.count() * 1000 << "ms" << std::endl;
 	return max_index;
 }
 
 // 边线检测
 void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
+	static int arrow_frame_count = 0;
 	static int threshold = 160;
 	static bool crosswalk_flag = false; // 是否已经检测过人行横道了
 	int roi_y = height / 3.0;
@@ -220,15 +226,16 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	cv::imshow("binary", binary);
 	cv::imshow("binary_crosswalk", binary_c);
 
-	cv::Rect arrow_roi = cv::Rect(0, height / 3.0, width, height / 2.0);;
+	cv::Rect arrow_roi = cv::Rect(0, height / 3.0, width, height * 2.0 / 3.0);
 	bool has_crosswalk = hasCrosswalk(&binary_c, &arrow_roi);
-	if (has_crosswalk && !crosswalk_flag) {
+	if (has_crosswalk) {
 		crosswalk_flag = true;
 		std::cout << "检测到人行横道" << std::endl;
 		cv::Mat arrow_frame = frame->clone();
 		std::cout << "箭头区域: " << arrow_roi << std::endl;
 		arrow_frame = arrow_frame(arrow_roi);
 		cv::imshow("arrow", arrow_frame);
+		cv::imwrite("/home/pi/Code/5G_ws/medias/arrows/arrow0-" + std::to_string(arrow_frame_count++) + ".jpg", arrow_frame);
 		int arrow = getArrow(&arrow_frame);
 		std::cout << "箭头方向: " << arrow << std::endl;
 	}
