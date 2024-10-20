@@ -21,8 +21,7 @@ bool LineDetector::isTrack(const Track& track) const {
 
 // 判断是否为人行横道
 bool LineDetector::isCrosswalk(CrossWalk& crosswalk) const {
-	return std::abs(crosswalk.slope) > 0.8 && crosswalk.area > width * height / 300.0 && 
-		crosswalk.height / crosswalk.width > 1 && crosswalk.height / crosswalk.width < 4;
+	return std::abs(crosswalk.slope) > 0.8 && crosswalk.area > width * height / 600.0 && crosswalk.height / crosswalk.width < 4;
 }
 
 // 过滤边线
@@ -211,18 +210,19 @@ int LineDetector::getArrow(cv::Mat* frame) const {
 // 边线检测
 void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	static int threshold = 160;
-	int roi_y = height / 4.0;
+	int roi_y = height / 3.0;
 	
 	cv::Rect line_roi = cv::Rect(0, roi_y, width, height - roi_y);
-	cv::Rect crosswalk_roi = cv::Rect(width / 4.0, roi_y, width / 2.0, height - roi_y);
+	cv::Rect crosswalk_roi = cv::Rect(0, roi_y, width, height - roi_y);
 
 	cv::Mat binary = getBinaryFrame(frame, line_roi, threshold);
 	cv::Mat binary_c = getBinaryFrame(frame, crosswalk_roi, threshold);
 	cv::imshow("binary", binary);
+	cv::imshow("binary_crosswalk", binary_c);
 
-	cv::Rect arrow_roi = cv::Rect(width / 3.0, 0, width / 3.0, height / 2.0);;
+	cv::Rect arrow_roi = cv::Rect(0, 0, width, height / 2.0);;
 	bool has_crosswalk = hasCrosswalk(&binary_c, &arrow_roi);
-	arrow_roi.height = arrow_roi.height + crosswalk_roi.y + 10;
+	arrow_roi.height = arrow_roi.height + crosswalk_roi.y;
 	if (has_crosswalk) {
 		std::cout << "检测到人行横道" << std::endl;
 		cv::Mat arrow_frame = frame->clone();

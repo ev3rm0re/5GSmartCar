@@ -26,18 +26,20 @@ Controller::Controller(int servo_pin, int pwm_pin) {
     gpioSetMode(pwm_pin, PI_OUTPUT);
     gpioSetPWMfrequency(pwm_pin, 200);
     gpioSetPWMrange(pwm_pin, 40000);
+    // gpioPWM(pwm_pin, 12800);
+    // sleep(2);
     std::cout << "电机初始化完成" << std::endl;
 }
 
 void Controller::moveforward(std::atomic<bool>& flag) const {
     std::cout << "前进!!!" << std::endl;
     sleep(5);
-    int i = 12600;
+    int i = 12800;
     int start = 0;
     int detected_crosswalk = 0;
     while (true) {
         if (flag.load(std::memory_order_acquire) == true && detected_crosswalk == 0) {
-            i = 12600;
+            i = 12800;
             gpioPWM(pwm_pin, i);
             system("aplay /home/pi/Code/5G_ws/medias/dz-banmaxian.wav");
             sleep(6);
@@ -47,12 +49,8 @@ void Controller::moveforward(std::atomic<bool>& flag) const {
         if (i != 13000 && (start == 0 || detected_crosswalk == 1)) {
             i += 100;
         };
-        std::cout << "PWM值:" << i << std::endl;
         gpioPWM(pwm_pin, i);
-        if (i == 13000) {
-            start = 1;
-            i = 12800;
-        }
+        if (i == 13000) start = 1;
         usleep(200 * 1000);
     }
 }
