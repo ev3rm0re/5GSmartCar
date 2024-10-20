@@ -21,7 +21,9 @@ bool LineDetector::isTrack(const Track& track) const {
 
 // 判断是否为人行横道
 bool LineDetector::isCrosswalk(CrossWalk& crosswalk) const {
-	return std::abs(crosswalk.slope) > 0.8 && crosswalk.area > width * height / 600.0 && crosswalk.height / crosswalk.width < 4;
+	return std::abs(crosswalk.slope) > 0.6 && 
+		crosswalk.area > width * height / 600.0 && crosswalk.area < width * height / 100.0 && 
+		crosswalk.height / crosswalk.width < 3 && crosswalk.height / crosswalk.width > 0.5;
 }
 
 // 过滤边线
@@ -123,7 +125,7 @@ bool LineDetector::hasCrosswalk(cv::Mat* binary, cv::Rect* arrow_roi) const {
 		}
 	}
 
-	if (crosswalks.size() > 1) {
+	if (crosswalks.size() > 2) {
 		has_crosswalk = true;
 		cv::Point2f max_crosswalk_top = crosswalks[0].top;
 		for (size_t i = 1; i < crosswalks.size(); i++) {
@@ -168,7 +170,7 @@ void LineDetector::threshChanger(int white_count, int* threshold, int lines_size
 		(*threshold)++;
 	}
 	if (current_threshold != *threshold) {
-		std::cout << "阈值更新为: " << *threshold << std::endl;
+		// std::cout << "阈值更新为: " << *threshold << std::endl;
 	}
 }
 
@@ -176,10 +178,10 @@ int LineDetector::getArrow(cv::Mat* frame) const {
     // TODO: 识别箭头
 	// 使用onnx模型识别箭头
 	cv::Mat frame_copy = frame->clone();
-	cv::resize(frame_copy, frame_copy, cv::Size(20, 28));
+	cv::resize(frame_copy, frame_copy, cv::Size(50, 50));
 	cv::cvtColor(frame_copy, frame_copy, cv::COLOR_BGR2GRAY);
 	frame_copy = frame_copy / 255.0;
-	const std::string model_path = "/home/pi/Code/5G_ws/models/mlp.onnx";
+	const std::string model_path = "/home/pi/Code/5G_ws/models/arrow_model.onnx";
 	cv::dnn::Net net = cv::dnn::readNetFromONNX(model_path);
 	if (net.empty()) {
 		std::cerr << "模型加载失败" << std::endl;
@@ -191,25 +193,23 @@ int LineDetector::getArrow(cv::Mat* frame) const {
 	net.setInput(blob);
 	cv::Mat outputs = net.forward();
 
-	// softmax
-	float max_prob = std::max_element(outputs.begin<float>(), outputs.end<float>()) - outputs.begin<float>();
-	cv::Mat softmax_prob;
-	cv::exp(outputs - max_prob, softmax_prob);
-	float sum = cv::sum(softmax_prob)[0];
-	softmax_prob /= sum;
+	int max_index = 0;
+	float max_value = 0.0;
+	for (int i = 0; i < outputs.cols; i++) {
+		if (outputs.at<float>(0, i) > max_value) {
+			max_value = outputs.at<float>(0, i);
+			max_index = i;
+		}
+	}
 
-	// 获取最大概率值
-	double confidence;
-	cv::Point class_id_point;
-	cv::minMaxLoc(softmax_prob, nullptr, &confidence, nullptr, &class_id_point);
-	int label_id = class_id_point.x;
-	std::cout << "箭头方向: " << label_id << " 置信度: " << confidence << std::endl;
-	return label_id;
+	std::cout << "********ONNX输出********" << std::endl << outputs << std::endl;
+	return max_index;
 }
 
 // 边线检测
 void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	static int threshold = 160;
+	static bool crosswalk_flag = false; // 是否已经检测过人行横道了
 	int roi_y = height / 3.0;
 	
 	cv::Rect line_roi = cv::Rect(0, roi_y, width, height - roi_y);
@@ -220,14 +220,15 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	cv::imshow("binary", binary);
 	cv::imshow("binary_crosswalk", binary_c);
 
-	cv::Rect arrow_roi = cv::Rect(0, 0, width, height / 2.0);;
+	cv::Rect arrow_roi = cv::Rect(0, height / 3.0, width, height / 2.0);;
 	bool has_crosswalk = hasCrosswalk(&binary_c, &arrow_roi);
-	arrow_roi.height = arrow_roi.height + crosswalk_roi.y;
-	if (has_crosswalk) {
+	if (has_crosswalk && !crosswalk_flag) {
+		crosswalk_flag = true;
 		std::cout << "检测到人行横道" << std::endl;
 		cv::Mat arrow_frame = frame->clone();
 		std::cout << "箭头区域: " << arrow_roi << std::endl;
 		arrow_frame = arrow_frame(arrow_roi);
+		cv::imshow("arrow", arrow_frame);
 		int arrow = getArrow(&arrow_frame);
 		std::cout << "箭头方向: " << arrow << std::endl;
 	}
@@ -246,7 +247,7 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	Track track;
 	getTrack(lines, &track);
 	if (track.width == 0) {
-		std::cout << "未检测到赛道" << std::endl;
+		// std::cout << "未检测到赛道" << std::endl;
 		return;
 	}
 	result->center = track.center;

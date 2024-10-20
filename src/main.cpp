@@ -12,7 +12,7 @@ int width = 300;
 int height = 200;
 
 void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    std::string video_path = "/home/pi/Code/5G_ws/medias/playground.avi";
+    std::string video_path = "/home/pi/Code/5G_ws/medias/arrow1.avi";
     cv::VideoCapture cap(video_path);
     // cv::VideoCapture cap(0, cv::CAP_V4L2);
     if (!cap.isOpened()) {
@@ -30,7 +30,7 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
         detector.detect(&frame, &result);
         flag.store(result.has_crosswalk, std::memory_order_release);
         controller.pidControl(result.center.x, width);
-        std::cout << "*****偏移量: " << result.center.x - width / 2.0 << "*****" << std::endl;
+        // std::cout << "*****偏移量: " << result.center.x - width / 2.0 << "*****" << std::endl;
         std::chrono::high_resolution_clock::time_point t4 = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t4 - t1);
         double fps = 1.0 / time_span.count();
