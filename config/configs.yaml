@@ -12,3 +12,5 @@ linedetect:
 video:
   isvideo: true
   videopath: "/home/pi/Code/5G_ws/medias/arrow.avi"
+
+movecontrol: true

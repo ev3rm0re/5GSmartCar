@@ -108,6 +108,9 @@ int main() {
     bool isvideo = config["video"]["isvideo"].as<bool>();
     std::string videopath = config["video"]["videopath"].as<std::string>();
 
+    // 移动控制参数
+    bool movecontrol = config["movecontrol"].as<bool>();
+
     Controller controller(servo_pin, pwm_pin);
     LineDetector detector(width, height, onnxmodelpath);
     std::atomic<bool> flag(false);
@@ -115,11 +118,13 @@ int main() {
     // std::thread video_record_thread(videoRecord);
     std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag), 
                             std::ref(isvideo), std::ref(videopath), std::ref(width), std::ref(height));
-    // std::thread move_thread(mover, &controller, std::ref(flag));
+    std::thread move_thread(mover, &controller, std::ref(flag));
     try {
         // video_record_thread.join();
         video_thread.join();
-        // move_thread.join();
+        if (movecontrol) {
+            move_thread.join();
+        }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }

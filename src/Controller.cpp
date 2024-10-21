@@ -33,7 +33,7 @@ Controller::Controller(int servo_pin, int pwm_pin) {
 
 void Controller::moveforward(std::atomic<bool>& flag) const {
     std::cout << "前进!!!" << std::endl;
-    sleep(5);
+    sleep(3);
     int i = 12800;
     int start = 0;
     int detected_crosswalk = 0;
