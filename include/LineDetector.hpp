@@ -8,7 +8,7 @@
 
 class LineDetector {
 public:
-	LineDetector(const int width, const int height);
+	LineDetector(const int width, const int height, const std::string onnxmodelpath);
 	// 判断是否为边线
 	bool isLine(Line& line) const;
 	// 判断是否为赛道
@@ -34,4 +34,5 @@ public:
 private:
 	int width;
 	int height;
+	std::string onnxmodelpath;
 };

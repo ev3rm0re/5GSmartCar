@@ -4,17 +4,21 @@
 #include <atomic>
 #include <time.h>
 #include <chrono>
+#include <yaml-cpp/yaml.h>
 
 #include "LineDetector.hpp"
 #include "Controller.hpp"
 
-int width = 300;
-int height = 200;
-
-void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    std::string video_path = "/home/pi/Code/5G_ws/medias/arrow.avi";
-    cv::VideoCapture cap(video_path);
-    // cv::VideoCapture cap(0, cv::CAP_V4L2);
+void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag, bool& isVideo, 
+                        std::string& videopath, int& width, int& height) {
+    cv::VideoCapture cap;
+    if (isVideo) {
+        std::string video_path = videopath;
+        cap.open(video_path);
+    }
+    else {
+        cap.open(0, cv::CAP_V4L2);
+    }
     if (!cap.isOpened()) {
         std::cerr << "打开失败" << std::endl;
         return;
@@ -40,23 +44,6 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
         if (key == 27) break;
     }
     cap.release();
-    cv::destroyAllWindows();
-}
-
-void imageProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& flag) {
-    std::string image_path = "/home/pi/Code/5G_ws/medias/playground_arrow.jpg";
-    cv::Mat frame = cv::imread(image_path);
-    if (frame.empty()) {
-        std::cerr << "读取失败" << std::endl;
-        return;
-    }
-    DetectResult result;
-    cv::resize(frame, frame, cv::Size(width, height));
-    detector.detect(&frame, &result);
-    flag.store(result.has_crosswalk, std::memory_order_release);
-    controller.pidControl(result.center.x, width);
-    cv::imshow("frame", frame);
-    cv::waitKey(0);
     cv::destroyAllWindows();
 }
 
@@ -97,14 +84,37 @@ int main() {
   	system("sudo cp /home/pi/.Xauthority /root/");
   	sleep(2);
     // system("aplay /home/pi/Code/5G_ws/medias/dz-banmaxian.wav");
-  	int servo_pin = 12;
-  	int pwm_pin = 13;
+    
+    // 判断是否有配置文件
+    if (access("/home/pi/Code/5G_ws/config/configs.yaml", F_OK) == -1) {
+        std::cerr << "配置文件不存在" << std::endl;
+        return -1;
+    }
+
+    YAML::Node config = YAML::LoadFile("/home/pi/Code/5G_ws/config/configs.yaml");
+
+    // gpio参数
+    int servo_pin = config["gpio"]["servo_pin"].as<int>();
+    int pwm_pin = config["gpio"]["pwm_pin"].as<int>();
+
+    // 视频参数
+    int width = config["frame"]["width"].as<int>();
+    int height = config["frame"]["height"].as<int>();
+
+    // 检测参数
+    std::string onnxmodelpath = config["linedetect"]["onnxmodelpath"].as<std::string>();
+
+    // 获取 video 部分的参数
+    bool isvideo = config["video"]["isvideo"].as<bool>();
+    std::string videopath = config["video"]["videopath"].as<std::string>();
+
     Controller controller(servo_pin, pwm_pin);
-    LineDetector detector(width, height);
+    LineDetector detector(width, height, onnxmodelpath);
     std::atomic<bool> flag(false);
 
     // std::thread video_record_thread(videoRecord);
-    std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag));
+    std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag), 
+                            std::ref(isvideo), std::ref(videopath), std::ref(width), std::ref(height));
     // std::thread move_thread(mover, &controller, std::ref(flag));
     try {
         // video_record_thread.join();

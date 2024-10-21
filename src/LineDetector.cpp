@@ -4,9 +4,10 @@
 #include <opencv2/dnn.hpp>
 #include <chrono>
 
-LineDetector::LineDetector(const int width, const int height) {
+LineDetector::LineDetector(const int width, const int height, const std::string onnxmodelpath) {
 	this->width = width;
 	this->height = height;
+	this->onnxmodelpath = onnxmodelpath;
 }
 
 // 判断是否为边线
@@ -179,17 +180,14 @@ int LineDetector::getArrow(cv::Mat* frame) const {
     // TODO: 识别箭头
 	// 使用onnx模型识别箭头
 	cv::Mat frame_copy = frame->clone();
-	cv::resize(frame_copy, frame_copy, cv::Size(50, 50));
-	frame_copy = frame_copy / 255.0;
-	const std::string model_path = "/home/pi/Code/5G_ws/models/arrow_yolo.onnx";
-	cv::dnn::Net net = cv::dnn::readNetFromONNX(model_path);
+	cv::dnn::Net net = cv::dnn::readNetFromONNX(onnxmodelpath);
 	if (net.empty()) {
 		std::cerr << "模型加载失败" << std::endl;
 		return -1;
 	}
 
 	cv::Mat blob;
-	cv::dnn::blobFromImage(frame_copy, blob);
+	blob = cv::dnn::blobFromImage(frame_copy, 1 / 255.0, cv::Size(64, 64), cv::Scalar(0, 0, 0), true, false);
 	net.setInput(blob);
 	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 	cv::Mat outputs = net.forward();
@@ -212,9 +210,12 @@ int LineDetector::getArrow(cv::Mat* frame) const {
 
 // 边线检测
 void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
-	static int arrow_frame_count = 0;
+	const std::map<int, std::string> directions = {
+		{0, "left"},
+		{1, "right"}
+	};
+	static bool detected = false; // 是否已经检测过人行横道了
 	static int threshold = 160;
-	static bool crosswalk_flag = false; // 是否已经检测过人行横道了
 	int roi_y = height / 3.0;
 	
 	cv::Rect line_roi = cv::Rect(0, roi_y, width, height - roi_y);
@@ -227,16 +228,12 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 
 	cv::Rect arrow_roi = cv::Rect(0, height / 3.0, width, height * 2.0 / 3.0);
 	bool has_crosswalk = hasCrosswalk(&binary_c, &arrow_roi);
-	if (has_crosswalk) {
-		crosswalk_flag = true;
+	if (has_crosswalk && !detected) {
+		detected = true;
 		std::cout << "检测到人行横道" << std::endl;
-		cv::Mat arrow_frame = frame->clone();
-		std::cout << "箭头区域: " << arrow_roi << std::endl;
-		arrow_frame = arrow_frame(arrow_roi);
-		cv::imshow("arrow", arrow_frame);
-		// cv::imwrite("/home/pi/Code/5G_ws/medias/arrows/arrow0-" + std::to_string(arrow_frame_count++) + ".jpg", arrow_frame);
-		int arrow = getArrow(&arrow_frame);
-		std::cout << "箭头方向: " << arrow << std::endl;
+		int arrow = getArrow(frame);
+		cv::putText(*frame, directions.at(arrow), cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
+		std::cout << "箭头方向: " << directions.at(arrow) << std::endl;
 	}
 
 	result->center = cv::Point2f(width / 2.0, height / 2.0);
