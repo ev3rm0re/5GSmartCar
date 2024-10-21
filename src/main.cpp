@@ -75,8 +75,8 @@ void videoRecord() {
     writer.release();
 }
 
-void mover(Controller* controller, std::atomic<bool>& has_crosswalk) {
-    controller->moveforward(has_crosswalk);
+void mover(Controller& controller, std::atomic<bool>& has_crosswalk) {
+    controller.moveforward(has_crosswalk);
 }
 
 int main() {
@@ -118,11 +118,11 @@ int main() {
     // std::thread video_record_thread(videoRecord);
     std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(flag), 
                             std::ref(isvideo), std::ref(videopath), std::ref(width), std::ref(height));
-    std::thread move_thread(mover, &controller, std::ref(flag));
     try {
         // video_record_thread.join();
         video_thread.join();
         if (movecontrol) {
+            std::thread move_thread(mover, std::ref(controller), std::ref(flag));
             move_thread.join();
         }
     } catch (const std::exception& e) {

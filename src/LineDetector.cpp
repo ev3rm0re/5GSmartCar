@@ -23,9 +23,9 @@ bool LineDetector::isTrack(const Track& track) const {
 
 // 判断是否为人行横道
 bool LineDetector::isCrosswalk(CrossWalk& crosswalk) const {
-	return std::abs(crosswalk.slope) > 0.5 && 
-		crosswalk.area > width * height / 300 && crosswalk.area < width * height / 100.0 && 
-		crosswalk.height / crosswalk.width < 3 && crosswalk.height / crosswalk.width > 0.2;
+ 	return std::abs(crosswalk.slope) > 5.0 && 
+		crosswalk.area > width * height / 120 && crosswalk.area < width * height / 50.0 && 
+		crosswalk.height / crosswalk.width < 2.0 && crosswalk.height / crosswalk.width > 0.1;
 }
 
 // 过滤边线
@@ -98,6 +98,7 @@ void LineDetector::getTrack(std::vector<Line>& lines, Track* track) const {
 			}
 		}
 	}
+	// TODO: 筛选tracks
 }
 
 // 获取二值化图像
@@ -113,30 +114,23 @@ cv::Mat LineDetector::getBinaryFrame(cv::Mat* frame, cv::Rect ROI, int threshold
 }
 
 // 检测人行横道
-bool LineDetector::hasCrosswalk(cv::Mat* binary, cv::Rect* arrow_roi) const {
+bool LineDetector::hasCrosswalk(cv::Mat* binary) const {
 	bool has_crosswalk = false;
 	// 查找人行横道
 	std::vector<CrossWalk> crosswalks;
 	std::vector<std::vector<cv::Point>> contours;
 	cv::findContours(*binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+	// std::cout << "*******************************************" << std::endl;
 	for (const auto& contour : contours) {
 		cv::RotatedRect rect = cv::minAreaRect(contour);
 		CrossWalk crosswalk(rect);
 		if (isCrosswalk(crosswalk)) {
+			// std::cout << "斜率: " << crosswalk.slope << "面积: " << crosswalk.area << "高宽比: " << crosswalk.height / crosswalk.width << std::endl;
 			crosswalks.push_back(crosswalk);
 		}
 	}
 
-	if (crosswalks.size() > 2) {
-		has_crosswalk = true;
-		cv::Point2f max_crosswalk_top = crosswalks[0].top;
-		for (size_t i = 1; i < crosswalks.size(); i++) {
-			if (crosswalks[i].top.y > max_crosswalk_top.y) {
-				max_crosswalk_top = crosswalks[i].top;
-			}
-		}
-		(*arrow_roi).height = max_crosswalk_top.y;
-	}
+	if (crosswalks.size() > 2) has_crosswalk = true;
 
 	return has_crosswalk;
 }
@@ -148,7 +142,7 @@ std::vector<Line> LineDetector::getLines(cv::Mat* binary) const {
 	cv::Canny(*binary, canny, 50, 150);
 
 	std::vector<cv::Vec4i> linesP;
-	cv::HoughLinesP(canny, linesP, 1, CV_PI / 180, 50, 50, 10);
+	cv::HoughLinesP(canny, linesP, 1, CV_PI / 180, 50, 50, 20);
 
 	std::vector<Line> lines;
 	for (const auto& lineP : linesP) {
@@ -187,7 +181,7 @@ int LineDetector::getArrow(cv::Mat* frame) const {
 	}
 
 	cv::Mat blob;
-	blob = cv::dnn::blobFromImage(frame_copy, 1 / 255.0, cv::Size(64, 64), cv::Scalar(0, 0, 0), true, false);
+	blob = cv::dnn::blobFromImage(frame_copy, 1 / 255.0, cv::Size(128, 128), cv::Scalar(0, 0, 0), true, false);
 	net.setInput(blob);
 	std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 	cv::Mat outputs = net.forward();
@@ -226,11 +220,11 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	cv::imshow("binary", binary);
 	cv::imshow("binary_crosswalk", binary_c);
 
-	cv::Rect arrow_roi = cv::Rect(0, height / 3.0, width, height * 2.0 / 3.0);
-	bool has_crosswalk = hasCrosswalk(&binary_c, &arrow_roi);
+	bool has_crosswalk = hasCrosswalk(&binary_c);
 	if (has_crosswalk && !detected) {
 		detected = true;
 		std::cout << "检测到人行横道" << std::endl;
+		cv::imshow("arrow_frame", *frame);
 		int arrow = getArrow(frame);
 		cv::putText(*frame, directions.at(arrow), cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
 		std::cout << "箭头方向: " << directions.at(arrow) << std::endl;

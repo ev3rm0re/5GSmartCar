@@ -7,10 +7,10 @@ frame:
   height: 200
 
 linedetect:
-  onnxmodelpath: "/home/pi/Code/5G_ws/models/arrow-yolo11n-cls-v2.onnx"
+  onnxmodelpath: "/home/pi/Code/5G_ws/models/arrow-yolo11n-cls-v3.onnx"
 
 video:
   isvideo: true
-  videopath: "/home/pi/Code/5G_ws/medias/arrow2.avi"
+  videopath: "/home/pi/Code/5G_ws/medias/arrow.avi"
 
-movecontrol: true
+movecontrol: false
