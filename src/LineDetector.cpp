@@ -202,11 +202,41 @@ int LineDetector::getArrow(cv::Mat* frame) const {
 	return max_index;
 }
 
-// 边线检测
+bool LineDetector::hasBlueBoard(cv::Mat* frame) const {
+	cv::Scalar upperblue = cv::Scalar(124, 255, 255);
+	cv::Scalar lowerblue = cv::Scalar(100, 43, 46);
+
+	cv::Mat hsv_frame;
+
+	cv::cvtColor(*frame, hsv_frame, cv::COLOR_BGR2HSV);
+
+	cv::Mat blue_mask;
+	cv::inRange(hsv_frame, lowerblue, upperblue, blue_mask);
+
+	cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+    cv::morphologyEx(blue_mask, blue_mask, cv::MORPH_CLOSE, kernel);
+
+	double blue_area = cv::countNonZero(blue_mask);
+	std::cout << "蓝色区域面积: " << blue_area << std::endl;
+
+	return blue_area > width * height / 1.5;
+}
+
+// 检测
 void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
+	result->direction = 3;
+	result->has_crosswalk = false;
+	result->center = cv::Point2f(width / 2.0, height / 2.0);
+
+	bool has_blueboard = hasBlueBoard(frame);
+	result->has_blueboard = has_blueboard;
+	if (has_blueboard) return;
+
+
 	const std::map<int, std::string> directions = {
 		{0, "left"},
-		{1, "right"}
+		{1, "right"},
+		{2, "straight"}
 	};
 	static bool detected = false; // 是否已经检测过人行横道了
 	static int threshold = 160;
@@ -228,9 +258,10 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 		int arrow = getArrow(frame);
 		cv::putText(*frame, directions.at(arrow), cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
 		std::cout << "箭头方向: " << directions.at(arrow) << std::endl;
+		result->direction = arrow;
 	}
 
-	result->center = cv::Point2f(width / 2.0, height / 2.0);
+	
 	result->has_crosswalk = has_crosswalk;
 
 	std::vector<Line> lines = getLines(&binary);

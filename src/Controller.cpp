@@ -3,13 +3,15 @@
 #include <iostream>
 #include <atomic>
 
-Controller::Controller(int servo_pin, int pwm_pin) {
+Controller::Controller(int servo_pin, int pwm_pin, int init_pwm, int target_pwm) {
     if (gpioInitialise() < 0) {
         std::cerr << "初始化失败" << std::endl;
         return;
     }
     this->servo_pin = servo_pin;
     this->pwm_pin = pwm_pin;
+    this->init_pwm = init_pwm;
+    this->target_pwm = target_pwm;
 
     // 初始化舵机
     gpioSetMode(servo_pin, PI_OUTPUT);
@@ -26,31 +28,33 @@ Controller::Controller(int servo_pin, int pwm_pin) {
     gpioSetMode(pwm_pin, PI_OUTPUT);
     gpioSetPWMfrequency(pwm_pin, 200);
     gpioSetPWMrange(pwm_pin, 40000);
-    // gpioPWM(pwm_pin, 12800);
-    // sleep(2);
     std::cout << "电机初始化完成" << std::endl;
 }
 
-void Controller::moveforward(std::atomic<bool>& flag) const {
+void Controller::moveforward(std::atomic<bool>& has_crosswalk, std::atomic<bool>& has_blueboard) const {
     std::cout << "前进!!!" << std::endl;
-    sleep(3);
-    int i = 12600;
-    int start = 0;
-    int detected_crosswalk = 0; // 是否已经检测过人行横道
+    int i = init_pwm;
+    bool start = false;
+    bool detected_crosswalk = false; // 是否已经检测过人行横道
     while (true) {
-        if (flag.load(std::memory_order_acquire) == true && detected_crosswalk == 0) {
-            i = 12600;
+        if (has_blueboard.load(std::memory_order_acquire) == true) {
+            i = init_pwm;
+            gpioPWM(pwm_pin, i);
+            usleep(200 * 1000);
+        }
+        if (has_crosswalk.load(std::memory_order_acquire) == true && detected_crosswalk == false) {
+            i = init_pwm;
             gpioPWM(pwm_pin, i);
             system("aplay /home/pi/Code/5G_ws/medias/dz-banmaxian.wav");
-            sleep(5);
-            flag.store(false, std::memory_order_release);
-            detected_crosswalk = 1;
+            sleep(3);
+            has_crosswalk.store(false, std::memory_order_release);
+            detected_crosswalk = true;
         }
-        if (i < 13000 && (start == 0 || detected_crosswalk == 1)) {
+        if (i < target_pwm && (start == false || detected_crosswalk == true)) {
             i += 100;
         };
         gpioPWM(pwm_pin, i);
-        if (i == 13000) start = 1;
+        if (i == target_pwm) start = true;
         usleep(200 * 1000);
     }
 }
@@ -77,3 +81,21 @@ void Controller::pidControl(double center, int width) const {
     gpioPWM(servo_pin, angleToDutyCycle(angle));
 }
 
+void Controller::changeDirection(int direction, int width) const {
+    if (direction == 0) {
+        // 左转
+        gpioPWM(servo_pin, angleToDutyCycle(145));
+        sleep(1);
+        gpioPWM(servo_pin, angleToDutyCycle(100));
+        sleep(1);
+        gpioPWM(servo_pin, angleToDutyCycle(55));
+    }
+    else if (direction == 1) {
+        // 右转
+        gpioPWM(servo_pin, angleToDutyCycle(55));
+        sleep(1);
+        gpioPWM(servo_pin, angleToDutyCycle(100));
+        sleep(1);
+        gpioPWM(servo_pin, angleToDutyCycle(145));
+    }
+}

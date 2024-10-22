@@ -80,4 +80,6 @@ struct DetectResult
 {
 	cv::Point2f center;
 	bool has_crosswalk;
+	bool has_blueboard;
+	int direction;
 };

@@ -31,6 +31,8 @@ public:
 	bool hasCrosswalk(cv::Mat* binary) const;
 	// 检测箭头方向
 	int getArrow(cv::Mat* frame) const;
+	// 检测蓝色板子
+	bool hasBlueBoard(cv::Mat* frame) const;
 private:
 	int width;
 	int height;

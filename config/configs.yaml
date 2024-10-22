@@ -1,6 +1,8 @@
 gpio:
   servo_pin: 12
   pwm_pin: 13
+  init_pwm: 12600
+  target_pwm: 13000
 
 frame:
   width: 300
@@ -10,7 +12,11 @@ linedetect:
   onnxmodelpath: "/home/pi/Code/5G_ws/models/arrow-yolo11n-cls-v3.onnx"
 
 video:
-  isvideo: true
+  isvideo: false
   videopath: "/home/pi/Code/5G_ws/medias/arrow.avi"
 
-movecontrol: false
+audio:
+  isaudio: false
+  audiopath: "/home/pi/Code/5G_ws/medias/leijun-jiayou.wav"
+
+movecontrol: true
