@@ -7,6 +7,7 @@
 #include "Struct.hpp"
 #include "Detector.hpp"
 #include "Controller.hpp"
+#include "Logger.hpp"
 
 class VideoProcessor {
 public:
@@ -26,7 +27,7 @@ public:
         }
 
         if (!cap.isOpened()) {
-            std::cerr << "打开失败" << std::endl;
+            Logger::getLogger()->error("视频流打开失败");
             return;
         }
 
@@ -57,13 +58,13 @@ public:
             // 检测蓝色挡板
             bool has_blueboard = blueboardDetector.hasBlueBoard(&frame);
             if (has_blueboard) {
-                state.has_blueboard = true;
+                state.has_blueboard.store(true);
                 continue;
             }
             else {
-                state.has_blueboard = false;
+                state.has_blueboard.store(false);
             }
-            // 二值化
+            // 取ROI并二值化
             double roi_start = height / 2;
             cv::Rect ROI = cv::Rect(0, height / 2, width, height - roi_start);
             cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
@@ -75,7 +76,7 @@ public:
                 state.has_crosswalk = true;
                 // 检测箭头
                 int direction = arrowProcessor.detectArrowDirection(&frame);
-                std::cout << "箭头方向: " << directions.at(direction) << std::endl;
+                Logger::getLogger()->info("检测到箭头，方向为: " + std::to_string(direction));
                 servo.changeLane(direction, width);
             }
 
@@ -83,7 +84,7 @@ public:
             std::vector<Line> lines = lineDetector.detectLines(&binary);
             lineDetector.filterLines(&lines);
 
-            // 自适应阈值
+            // 自适应调整阈值
             int white_count = cv::countNonZero(binary);
             binaryProcessor.adjustThreshold(white_count, &threshold, lines.size());
 
@@ -109,8 +110,7 @@ public:
             double fps = 1.0 / time_span.count();
             cv::putText(frame, "FPS: " + std::to_string(fps), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
             // 显示图像
-            cv::imshow("frame", frame);
-            cv::imshow("binary", binary);
+            Logger::getLogger()->showMat("frame", frame);
             if (cv::waitKey(1) == 27) break;
         }
         cap.release();
@@ -128,4 +128,5 @@ private:
     int height;
     int init_pwm;
     int target_pwm;
+    Logger logger;
 };

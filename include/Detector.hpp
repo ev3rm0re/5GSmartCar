@@ -5,6 +5,8 @@
 
 // 边线结构体
 #include "Struct.hpp"
+#include "Logger.hpp"
+
 
 class LineDetector {
 public:
@@ -94,6 +96,7 @@ private:
 	std::string onnxmodelpath;
 };
 
+
 class LaneDetector {
 public:
    	LaneDetector(const int width, const int height) : width(width), height(height) {};
@@ -119,6 +122,7 @@ private:
     int width;
     int height;
 };
+
 
 class CrosswalkDetector {
 public:
@@ -152,6 +156,7 @@ private:
     int height;
 };
 
+
 class BinaryImageProcessor {
 public:
     BinaryImageProcessor(int width, int height) : width(width), height(height) {};
@@ -179,7 +184,7 @@ public:
 	    	(*threshold)++;
 	    }
 	    if (current_threshold != *threshold) {
-	    	std::cout << "阈值更新为: " << *threshold << std::endl;
+	    	Logger::getLogger()->info("二值化阈值更新为: " + std::to_string(*threshold));
 	    }
     };
 
@@ -187,6 +192,7 @@ private:
     int width;
     int height;
 };
+
 
 class ArrowProcessor {
 public:
@@ -197,7 +203,7 @@ public:
 	    cv::Mat frame_copy = frame->clone();
 	    cv::dnn::Net net = cv::dnn::readNetFromONNX(onnxModelPath);
 	    if (net.empty()) {
-	    	std::cerr << "模型加载失败" << std::endl;
+	    	Logger::getLogger()->error("无法加载ONNX模型");
 	    	return -1;
 	    }
 
@@ -218,14 +224,21 @@ public:
 	    	}
 	    }
 
-	    std::cout << "********ONNX输出********" << std::endl << outputs << std::endl 
-	    		<< "推理时间: " << time_span.count() * 1000 << "ms" << std::endl;
+		std::string onnx_outputs = "";
+	    for (int i = 0; i < outputs.cols; i++) {
+	    	onnx_outputs += std::to_string(outputs.at<float>(0, i)) + " ";
+	    }
+
+		Logger::getLogger()->info("********ONNX输出********\n" + onnx_outputs + 
+									"\n推理时间: " + std::to_string(time_span.count() * 1000) + "ms");
+
 	    return max_index;
     };
 
 private:
     std::string onnxModelPath;
 };
+
 
 class BlueBoardDetector {
 public:

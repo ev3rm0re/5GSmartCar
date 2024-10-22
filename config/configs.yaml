@@ -21,4 +21,4 @@ audio:
 
 movecontrol: true
 
-debug: true
+loglevel: "DEBUG"

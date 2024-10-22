@@ -5,18 +5,20 @@
 #include <string>
 #include <atomic>
 
+#include "Logger.hpp"
+
 class GPIOHandler {
 public:
     GPIOHandler(int servo_pin, int pwm_pin) {
         if (gpioInitialise() < 0) {
-            std::cerr << "GPIO 初始化失败" << std::endl;
+            Logger::getLogger()->error("GPIO 初始化失败");
             return;
         }
         this->servo_pin = servo_pin;
         this->pwm_pin = pwm_pin;
         gpioSetMode(servo_pin, PI_OUTPUT);
         gpioSetMode(pwm_pin, PI_OUTPUT);
-        std::cout << "GPIO 初始化成功" << std::endl;
+        Logger::getLogger()->info("GPIO 初始化成功");
     }
 
     // 设置 PWM 值
@@ -31,7 +33,7 @@ public:
 
     ~GPIOHandler() {
         gpioTerminate(); // 终止 GPIO
-        std::cout << "GPIO 终止成功" << std::endl;
+        Logger::getLogger()->info("GPIO 终止成功");
     }
 
 private:
@@ -51,7 +53,7 @@ public:
         gpioPWM(pin, gpio.angleToDutyCycle(130));
         sleep(1);
         gpioPWM(pin, gpio.angleToDutyCycle(100));
-        std::cout << "舵机初始化成功" << std::endl;
+        Logger::getLogger()->info("舵机初始化成功");
     }
 
     void setAngle(double center, int width) {
@@ -109,26 +111,26 @@ public:
         gpioSetPWMrange(pin, 40000);
         gpioPWM(pin, init_pwm);
         sleep(2);
-        std::cout << "电机初始化成功" << std::endl;
+        Logger::getLogger()->info("电机初始化成功");
     }
 
     // 向前移动逻辑
-    void moveForward(std::atomic<bool>& has_crosswalk, std::atomic<bool>& has_blueboard) {
+    void moveForward(State& state) {
         sleep(5);
         int i = init_pwm;
         bool detected_crosswalk = false;
         while (true) {
-            if (has_blueboard.load()) {
+            if (state.has_blueboard.load()) {
                 i = init_pwm;
                 gpio.setPWM(pin, i);
                 usleep(200 * 1000);
                 continue;
             }
-            if (has_crosswalk.load() && !detected_crosswalk) {
+            if (state.has_crosswalk.load() && !detected_crosswalk) {
                 i = init_pwm;
                 gpio.setPWM(pin, i);
                 sleep(3);
-                has_crosswalk.store(false);
+                state.has_crosswalk.store(false);
                 detected_crosswalk = true;
             }
             if (i < target_pwm) {

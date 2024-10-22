@@ -8,6 +8,7 @@
 
 #include "VideoProcessor.hpp"
 #include "Controller.hpp"
+#include "Logger.hpp"
 
 // 录像函数
 void videoRecord() {
@@ -43,12 +44,24 @@ int main() {
   	system("sudo cp /home/pi/.Xauthority /root/");
   	sleep(2);
 
+    std::cout << "****************程序开始运行****************" << std::endl;
     // 判断是否有配置文件
     if (access("/home/pi/Code/5G_ws/config/configs.yaml", F_OK) == -1) {
-        std::cerr << "配置文件不存在" << std::endl;
+        Logger::getLogger()->error("配置文件不存在");
         return -1;
     }
     YAML::Node config = YAML::LoadFile("/home/pi/Code/5G_ws/config/configs.yaml");
+    // LOG_LEVEL
+    std::string loglevel = config["loglevel"].as<std::string>();
+    if (loglevel == "INFO") {
+        Logger::getLogger()->setLogLevel(Logger::INFO);
+    } else if (loglevel == "WARNING") {
+        Logger::getLogger()->setLogLevel(Logger::WARNING);
+    } else if (loglevel == "ERROR") {
+        Logger::getLogger()->setLogLevel(Logger::ERROR);
+    } else {
+        Logger::getLogger()->setLogLevel(Logger::DEBUG);
+    }
     // gpio参数
     int servo_pin = config["gpio"]["servo_pin"].as<int>();
     int pwm_pin = config["gpio"]["pwm_pin"].as<int>();
@@ -87,13 +100,13 @@ int main() {
     std::thread videoThread(&VideoProcessor::videoProcessing, &videoProcessor);
     std::thread moveThread;
     if (movecontrol) {
-            moveThread = std::thread(&MotorController::moveForward, &motor, std::ref(state.has_crosswalk), std::ref(state.has_blueboard));
+            moveThread = std::thread(&MotorController::moveForward, &motor, std::ref(state));
     }
     try {
         videoThread.join();
         if (movecontrol) moveThread.join();
     } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        Logger::getLogger()->error(e.what());
     }
     return 0;
 }
