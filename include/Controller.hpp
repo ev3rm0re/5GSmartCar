@@ -51,9 +51,9 @@ public:
         gpioSetPWMfrequency(pin, 50);
         gpioSetPWMrange(pin, 100);
         gpioPWM(pin, gpio.angleToDutyCycle(70));
-        sleep(1);
+        gpioDelay(2000 * 1000);
         gpioPWM(pin, gpio.angleToDutyCycle(130));
-        sleep(1);
+        gpioDelay(2000 * 1000);
         gpioPWM(pin, gpio.angleToDutyCycle(100));
         Logger::getLogger()->info("舵机初始化成功");
     }
@@ -72,7 +72,7 @@ public:
 
         last_error = error;
         gpio.setPWM(pin, gpio.angleToDutyCycle(angle));
-        usleep(2 * 1000);
+        gpioDelay(2000);
         gpio.setPWM(pin, gpio.angleToDutyCycle(angle));
     }
 
@@ -86,9 +86,9 @@ public:
             second_angle = 130;
         }
         gpio.setPWM(pin, gpio.angleToDutyCycle(first_angle));
-        usleep(2 * 1000);
+        gpioDelay(2000);
         gpio.setPWM(pin, gpio.angleToDutyCycle(100));
-        usleep(2 * 1000);
+        gpioDelay(2000);
         gpio.setPWM(pin, gpio.angleToDutyCycle(second_angle));
     }
 
@@ -112,7 +112,7 @@ public:
         gpioSetPWMfrequency(pin, 200);
         gpioSetPWMrange(pin, 40000);
         gpioPWM(pin, init_pwm);
-        sleep(2);
+        gpioDelay(2000 * 1000);
         Logger::getLogger()->info("电机初始化成功");
     }
 
@@ -125,13 +125,13 @@ public:
             if (state.has_blueboard.load()) {
                 i = init_pwm;
                 gpio.setPWM(pin, i);
-                usleep(200 * 1000);
+                gpioDelay(200);
                 continue;
             }
             if (state.has_crosswalk.load() && !detected_crosswalk) {
                 i = init_pwm;
                 gpio.setPWM(pin, i);
-                sleep(3);
+                gpioDelay(3000 * 1000);
                 state.has_crosswalk.store(false);
                 detected_crosswalk = true;
             }
@@ -139,7 +139,7 @@ public:
                 i += 100;
             }
             gpio.setPWM(pin, i);
-            usleep(100 * 1000);
+            gpioDelay(100);
         }
     }
 
