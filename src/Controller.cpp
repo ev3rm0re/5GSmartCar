@@ -17,17 +17,19 @@ Controller::Controller(int servo_pin, int pwm_pin, int init_pwm, int target_pwm)
     gpioSetMode(servo_pin, PI_OUTPUT);
     gpioSetPWMfrequency(servo_pin, 50);
     gpioSetPWMrange(servo_pin, 100);
-    gpioPWM(servo_pin, angleToDutyCycle(70));
+    gpioPWM(servo_pin, angleToDutyCycle(80));
     sleep(1);
-    gpioPWM(servo_pin, angleToDutyCycle(130));
+    gpioPWM(servo_pin, angleToDutyCycle(140));
     sleep(1);
-    gpioPWM(servo_pin, angleToDutyCycle(100));
+    gpioPWM(servo_pin, angleToDutyCycle(110));
     std::cout << "舵机初始化完成" << std::endl;
 
     // 初始化电机
     gpioSetMode(pwm_pin, PI_OUTPUT);
     gpioSetPWMfrequency(pwm_pin, 200);
     gpioSetPWMrange(pwm_pin, 40000);
+    gpioPWM(pwm_pin, init_pwm);
+    sleep(2);
     std::cout << "电机初始化完成" << std::endl;
 }
 
@@ -54,6 +56,7 @@ void Controller::moveforward(std::atomic<bool>& has_crosswalk, std::atomic<bool>
         if (i < target_pwm && (start == false || detected_crosswalk == true)) {
             i += 100;
         };
+        std::cout << "pwm: " << i << std::endl;
         gpioPWM(pwm_pin, i);
         if (i == target_pwm) start = true;
         usleep(200 * 1000);
@@ -74,7 +77,7 @@ void Controller::pidControl(double center, int width) const {
         error_angle = angle_outmin;
     }
 
-    double angle = 100 - error_angle;
+    double angle = 115 - error_angle;
     // angle = (angle - 90) * 1.2 + 90;
     last_error = error;
     gpioPWM(servo_pin, angleToDutyCycle(angle));
@@ -85,18 +88,18 @@ void Controller::pidControl(double center, int width) const {
 void Controller::changeDirection(int direction, int width) const {
     if (direction == 0) {
         // 左转
-        gpioPWM(servo_pin, angleToDutyCycle(145));
+        gpioPWM(servo_pin, angleToDutyCycle(140));
         sleep(1);
-        gpioPWM(servo_pin, angleToDutyCycle(100));
+        gpioPWM(servo_pin, angleToDutyCycle(110));
         sleep(1);
-        gpioPWM(servo_pin, angleToDutyCycle(55));
+        gpioPWM(servo_pin, angleToDutyCycle(80));
     }
     else if (direction == 1) {
         // 右转
-        gpioPWM(servo_pin, angleToDutyCycle(55));
+        gpioPWM(servo_pin, angleToDutyCycle(80));
         sleep(1);
-        gpioPWM(servo_pin, angleToDutyCycle(100));
+        gpioPWM(servo_pin, angleToDutyCycle(110));
         sleep(1);
-        gpioPWM(servo_pin, angleToDutyCycle(145));
+        gpioPWM(servo_pin, angleToDutyCycle(140));
     }
 }

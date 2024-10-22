@@ -2,7 +2,7 @@ gpio:
   servo_pin: 12
   pwm_pin: 13
   init_pwm: 12600
-  target_pwm: 13000
+  target_pwm: 13100
 
 frame:
   width: 300
@@ -19,4 +19,6 @@ audio:
   isaudio: false
   audiopath: "/home/pi/Code/5G_ws/medias/leijun-jiayou.wav"
 
-movecontrol: true
+movecontrol: false
+
+debug: true

@@ -4,6 +4,8 @@
 #include <opencv2/dnn.hpp>
 #include <chrono>
 
+extern bool debug;
+
 LineDetector::LineDetector(const int width, const int height, const std::string onnxmodelpath) {
 	this->width = width;
 	this->height = height;
@@ -241,20 +243,23 @@ void LineDetector::detect(cv::Mat* frame, DetectResult* result) const {
 	static bool detected = false; // 是否已经检测过人行横道了
 	static int threshold = 160;
 	int roi_y = height / 3.0;
+	int roi_c_y = height * 2.0 / 9.0;
 	
 	cv::Rect line_roi = cv::Rect(0, roi_y, width, height - roi_y);
-	cv::Rect crosswalk_roi = cv::Rect(0, roi_y, width, height - roi_y);
+	cv::Rect crosswalk_roi = cv::Rect(0, roi_c_y, width, height - roi_c_y);
 
 	cv::Mat binary = getBinaryFrame(frame, line_roi, threshold);
 	cv::Mat binary_c = getBinaryFrame(frame, crosswalk_roi, threshold);
-	cv::imshow("binary", binary);
-	cv::imshow("binary_crosswalk", binary_c);
+	if (debug) {
+		cv::imshow("binary", binary);
+		cv::imshow("binary_crosswalk", binary_c);
+	}
 
 	bool has_crosswalk = hasCrosswalk(&binary_c);
 	if (has_crosswalk && !detected) {
 		detected = true;
 		std::cout << "检测到人行横道" << std::endl;
-		cv::imshow("arrow_frame", *frame);
+		// cv::imshow("arrow_frame", *frame);
 		int arrow = getArrow(frame);
 		cv::putText(*frame, directions.at(arrow), cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
 		std::cout << "箭头方向: " << directions.at(arrow) << std::endl;

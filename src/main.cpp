@@ -9,6 +9,8 @@
 #include "LineDetector.hpp"
 #include "Controller.hpp"
 
+bool debug;
+
 void videoRecord() {
     cv::VideoCapture cap(0, cv::CAP_V4L2);
     if (!cap.isOpened()) {
@@ -79,9 +81,11 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
         double fps = 1.0 / time_span.count();
 
         cv::putText(frame, "FPS: " + std::to_string(fps), cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
-        cv::imshow("frame", frame);
-        int key = cv::waitKey(1);
-        if (key == 27) break;
+        if (debug) {
+            cv::imshow("frame", frame);
+            int key = cv::waitKey(1);
+            if (key == 27) break;
+        }
     }
     cap.release();
     cv::destroyAllWindows();
@@ -103,6 +107,9 @@ int main() {
     }
 
     YAML::Node config = YAML::LoadFile("/home/pi/Code/5G_ws/config/configs.yaml");
+
+    // debug
+    debug = config["debug"].as<bool>();
 
     // gpio参数
     int servo_pin = config["gpio"]["servo_pin"].as<int>();
@@ -139,13 +146,11 @@ int main() {
     // std::thread video_record_thread(videoRecord);
     std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(has_crosswalk), 
                 std::ref(has_blueboard), std::ref(isvideo), std::ref(videopath), std::ref(width), std::ref(height));
+    std::thread move_thread(mover, std::ref(controller), std::ref(has_crosswalk), std::ref(has_blueboard));
     try {
         // video_record_thread.join();
-        if (movecontrol) {
-            std::thread move_thread(mover, std::ref(controller), std::ref(has_crosswalk), std::ref(has_blueboard));
-            move_thread.join();
-        }
         video_thread.join();
+        if (movecontrol) move_thread.join();
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
