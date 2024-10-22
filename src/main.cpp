@@ -10,34 +10,6 @@
 #include "Controller.hpp"
 #include "Logger.hpp"
 
-// 录像函数
-void videoRecord() {
-    cv::VideoCapture cap(0, cv::CAP_V4L2);
-    if (!cap.isOpened()) {
-        std::cerr << "打开失败" << std::endl;
-        return;
-    }
-
-    // 保存录像
-    // clock_t start, end;
-    double fps = 30.0;
-    cv::Size size = cv::Size(600, 400);
-    std::string save_path = "/home/pi/Code/5G_ws/medias/playground.avi";
-    const char *p = save_path.data();
-    cv::VideoWriter writer(save_path, cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), fps, size);
-    // start = clock();
-    int i = 0;
-    while (cap.isOpened()) {
-        cv::Mat frame;
-        cap >> frame;
-
-        if (frame.empty()) break;
-        cv::resize(frame, frame, size);
-        std::cout << "录像帧数: " << i++ << std::endl;
-        writer.write(frame);
-    }
-    writer.release();
-}
 
 int main() {
     system("sudo killall pigpiod");
