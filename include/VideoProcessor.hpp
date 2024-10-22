@@ -60,6 +60,9 @@ public:
                 state.has_blueboard = true;
                 continue;
             }
+            else {
+                state.has_blueboard = false;
+            }
             // 二值化
             double roi_start = height / 2;
             cv::Rect ROI = cv::Rect(0, height / 2, width, height - roi_start);
