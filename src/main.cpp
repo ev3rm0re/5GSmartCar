@@ -55,6 +55,8 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
         return;
     }
 
+    bool detected_crosswalk = false; // 是否已经检测过人行横道
+
     while (cap.isOpened()) {
         cv::Mat frame;
 
@@ -69,8 +71,9 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
         // std::cout << "是否有蓝色挡板: " << result.has_blueboard << std::endl;
         has_blueboard.store(result.has_blueboard, std::memory_order_release);
         has_crosswalk.store(result.has_crosswalk, std::memory_order_release);
-        if (result.has_crosswalk) {
-            // TODO: 变道控制
+        if (result.has_crosswalk && !detected_crosswalk) {
+            detected_crosswalk = true;
+            // 变道控制
             sleep(7);
             controller.changeDirection(result.direction, width);
         }
@@ -146,7 +149,10 @@ int main() {
     // std::thread video_record_thread(videoRecord);
     std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(has_crosswalk), 
                 std::ref(has_blueboard), std::ref(isvideo), std::ref(videopath), std::ref(width), std::ref(height));
-    std::thread move_thread(mover, std::ref(controller), std::ref(has_crosswalk), std::ref(has_blueboard));
+    std::thread move_thread;
+    if (movecontrol) {
+        move_thread = std::thread(mover, std::ref(controller), std::ref(has_crosswalk), std::ref(has_blueboard));
+    }
     try {
         // video_record_thread.join();
         video_thread.join();

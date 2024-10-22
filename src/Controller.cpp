@@ -87,7 +87,8 @@ void Controller::pidControl(double center, int width) const {
 
 void Controller::changeDirection(int direction, int width) const {
     if (direction == 0) {
-        // 左转
+        // 左变道
+        std::cout << "左变道" << std::endl;
         gpioPWM(servo_pin, angleToDutyCycle(140));
         sleep(1);
         gpioPWM(servo_pin, angleToDutyCycle(110));
@@ -95,7 +96,8 @@ void Controller::changeDirection(int direction, int width) const {
         gpioPWM(servo_pin, angleToDutyCycle(80));
     }
     else if (direction == 1) {
-        // 右转
+        // 右变道
+        std::cout << "右变道" << std::endl;
         gpioPWM(servo_pin, angleToDutyCycle(80));
         sleep(1);
         gpioPWM(servo_pin, angleToDutyCycle(110));

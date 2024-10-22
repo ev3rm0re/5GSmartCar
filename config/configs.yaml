@@ -12,7 +12,7 @@ linedetect:
   onnxmodelpath: "/home/pi/Code/5G_ws/models/arrow-yolo11n-cls-v3.onnx"
 
 video:
-  isvideo: false
+  isvideo: true
   videopath: "/home/pi/Code/5G_ws/medias/arrow.avi"
 
 audio:
