@@ -184,7 +184,7 @@ public:
 	    	(*threshold)++;
 	    }
 	    if (current_threshold != *threshold) {
-	    	Logger::getLogger()->info("二值化阈值更新为: " + std::to_string(*threshold));
+	    	Logger::getLogger()->debug("二值化阈值更新为: " + std::to_string(*threshold));
 	    }
     };
 
