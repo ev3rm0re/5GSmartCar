@@ -1,25 +1,147 @@
 #pragma once
 
 #include <pigpio.h>
+#include <unistd.h>
 #include <string>
 #include <atomic>
 
-class Controller {
+class GPIOHandler {
 public:
-    Controller(int servo_pin, int pwm_pin, int init_pwm, int target_pwm);
-    void moveforward(std::atomic<bool>& flag, std::atomic<bool>& has_blueboard) const;
-    double angleToDutyCycle(double angle) const;
-    void pidControl(double center, int width) const;
-    void changeDirection(int direction, int width) const;
+    GPIOHandler(int servo_pin, int pwm_pin) {
+        if (gpioInitialise() < 0) {
+            std::cerr << "GPIO 初始化失败" << std::endl;
+            return;
+        }
+        this->servo_pin = servo_pin;
+        this->pwm_pin = pwm_pin;
+        gpioSetMode(servo_pin, PI_OUTPUT);
+        gpioSetMode(pwm_pin, PI_OUTPUT);
+        std::cout << "GPIO 初始化成功" << std::endl;
+    }
+
+    // 设置 PWM 值
+    void setPWM(int pin, int value) {
+        gpioPWM(pin, value);
+    }
+
+    // 设置舵机的角度
+    double angleToDutyCycle(double angle) {
+        return 2.5 + (angle / 180.0) * 10.0;
+    }
+
+    ~GPIOHandler() {
+        gpioTerminate(); // 终止 GPIO
+        std::cout << "GPIO 终止成功" << std::endl;
+    }
+
 private:
-    int init_pwm;
-    int target_pwm;
     int servo_pin;
     int pwm_pin;
+};
+
+
+// ServoController: 负责舵机操作
+class ServoController {
+public:
+    ServoController(GPIOHandler& gpio, int pin) : gpio(gpio), pin(pin) {
+        gpioSetPWMfrequency(pin, 50);
+        gpioSetPWMrange(pin, 100);
+        gpioPWM(pin, gpio.angleToDutyCycle(70));
+        sleep(1);
+        gpioPWM(pin, gpio.angleToDutyCycle(130));
+        sleep(1);
+        gpioPWM(pin, gpio.angleToDutyCycle(100));
+        std::cout << "舵机初始化成功" << std::endl;
+    }
+
+    void setAngle(double center, int width) {
+        error = center - width / 2.0;
+        double error_angle = kp * error + kd * (error - last_error);
+
+        if (error_angle > angle_outmax) {
+            error_angle = angle_outmax;
+        } else if (error_angle < angle_outmin) {
+            error_angle = angle_outmin;
+        }
+
+        double angle = 100 - error_angle;
+
+        last_error = error;
+        gpio.setPWM(pin, gpio.angleToDutyCycle(angle));
+        usleep(2 * 1000);
+        gpio.setPWM(pin, gpio.angleToDutyCycle(angle));
+    }
+
+    void changeLane(int direction, int width) {
+        double first_angle, second_angle;
+        if (direction == 0) {
+            first_angle = 130;
+            second_angle = 70;
+        } else if (direction == 1) {
+            first_angle = 70;
+            second_angle = 130;
+        }
+        gpio.setPWM(pin, gpio.angleToDutyCycle(first_angle));
+        usleep(2 * 1000);
+        gpio.setPWM(pin, gpio.angleToDutyCycle(100));
+        usleep(2 * 1000);
+        gpio.setPWM(pin, gpio.angleToDutyCycle(second_angle));
+    }
+
+private:
+    GPIOHandler& gpio;
+    int pin;
+    double error;
+    double last_error;
     double kp = 0.5;
     double kd = 0.11;
-    mutable double last_error = 0.0;
-    mutable double error = 0.0;
     double angle_outmax = 45.0;
     double angle_outmin = -45.0;
+};
+
+
+// MotorController: 负责电机控制
+class MotorController {
+public:
+    MotorController(GPIOHandler& gpio, int pin, int init_pwm, int target_pwm)
+                    : gpio(gpio), pin(pin), init_pwm(init_pwm), target_pwm(target_pwm) {
+        gpioSetPWMfrequency(pin, 200);
+        gpioSetPWMrange(pin, 40000);
+        gpioPWM(pin, init_pwm);
+        sleep(2);
+        std::cout << "电机初始化成功" << std::endl;
+    }
+
+    // 向前移动逻辑
+    void moveForward(std::atomic<bool>& has_crosswalk, std::atomic<bool>& has_blueboard) {
+        sleep(5);
+        int i = init_pwm;
+        bool detected_crosswalk = false;
+        while (true) {
+            if (has_blueboard.load()) {
+                i = init_pwm;
+                gpio.setPWM(pin, i);
+                usleep(200 * 1000);
+                continue;
+            }
+            if (has_crosswalk.load() && !detected_crosswalk) {
+                i = init_pwm;
+                gpio.setPWM(pin, i);
+                sleep(3);
+                has_crosswalk.store(false);
+                detected_crosswalk = true;
+            }
+            if (i < target_pwm) {
+                i += 100;
+            }
+            gpio.setPWM(pin, i);
+            usleep(100 * 1000);
+        }
+    }
+
+private:
+    GPIOHandler& gpio;
+    int pin;
+    int init_pwm;
+    int target_pwm;
 };

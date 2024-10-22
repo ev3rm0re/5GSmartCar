@@ -1,0 +1,128 @@
+#pragma once
+
+#include <opencv2/opencv.hpp>
+#include <unistd.h>
+#include <time.h>
+
+#include "Struct.hpp"
+#include "Detector.hpp"
+#include "Controller.hpp"
+
+class VideoProcessor {
+public:
+    VideoProcessor(bool isVideo, std::string videopath, std::string audiopath, int width, int height, std::string onnxmodelpath, 
+                    int init_pwm, int target_pwm, State& state, GPIOHandler& gpio) : 
+                    isVideo(isVideo), videopath(videopath), audiopath(audiopath), width(width), height(height), 
+                    onnxmodelpath(onnxmodelpath), init_pwm(init_pwm), target_pwm(target_pwm), state(state), gpio(gpio) {};
+
+    void videoProcessing() {
+        cv::VideoCapture cap;
+        if (isVideo) {
+            std::string video_path = videopath;
+            cap.open(video_path);
+        }
+        else {
+            cap.open(0, cv::CAP_V4L2);
+        }
+
+        if (!cap.isOpened()) {
+            std::cerr << "打开失败" << std::endl;
+            return;
+        }
+
+        // 初始化舵机控制器
+        ServoController servo(gpio, 12);
+        // 初始化线检测器
+        LineDetector lineDetector(width, height);
+        // 初始化赛道检测器
+        LaneDetector laneDetector(width, height);
+        // 初始化二值图像处理器
+        BinaryImageProcessor binaryProcessor(width, height);
+        // 初始化箭头检测器
+        ArrowProcessor arrowProcessor(onnxmodelpath);
+        // 初始化人行横道检测器
+        CrosswalkDetector crosswalkDetector(width, height);
+        // 初始化蓝色挡板检测器
+        BlueBoardDetector blueboardDetector(width, height);
+
+        int threshold = 160;
+
+        while (cap.isOpened()) {
+            cv::Mat frame;
+            std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
+            cap >> frame;
+            if (frame.empty()) break;
+            cv::resize(frame, frame, cv::Size(width, height));
+
+            // 检测蓝色挡板
+            bool has_blueboard = blueboardDetector.hasBlueBoard(&frame);
+            if (has_blueboard) {
+                state.has_blueboard = true;
+                continue;
+            }
+            // 二值化
+            double roi_start = height / 2;
+            cv::Rect ROI = cv::Rect(0, height / 2, width, height - roi_start);
+            cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
+
+            // 检测斑马线
+            bool has_crosswalk = crosswalkDetector.hasCrosswalk(&binary);
+            if (has_crosswalk && !state.has_crosswalk) {
+                system(("aplay " + audiopath).data());
+                state.has_crosswalk = true;
+                // 检测箭头
+                int direction = arrowProcessor.detectArrowDirection(&frame);
+                std::cout << "箭头方向: " << directions.at(direction) << std::endl;
+                servo.changeLane(direction, width);
+            }
+
+            // 检测边线
+            std::vector<Line> lines = lineDetector.detectLines(&binary);
+            lineDetector.filterLines(&lines);
+
+            // 自适应阈值
+            int white_count = cv::countNonZero(binary);
+            binaryProcessor.adjustThreshold(white_count, &threshold, lines.size());
+
+            // 绘制边线
+            for (const auto& line : lines) {
+                cv::line(frame, line.top + cv::Point2f(0, roi_start), line.bottom + cv::Point2f(0, roi_start), cv::Scalar(255, 0, 0), 2);
+            }
+
+            // 匹配赛道
+            Lane lane;
+            laneDetector.getLane(lines, &lane);
+
+            // 绘制赛道
+            if (lane.width > 0) {
+                cv::line(frame, lane.left_line.center + cv::Point2f(0, roi_start), lane.left_line.center + cv::Point2f(0, roi_start), cv::Scalar(0, 255, 0), 2);
+                cv::circle(frame, lane.center + cv::Point2f(0, roi_start), 5, cv::Scalar(0, 255, 0), -1);
+                // 舵机控制
+                servo.setAngle(lane.center.x, width);
+            }
+            
+            std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+            double fps = 1.0 / time_span.count();
+            cv::putText(frame, "FPS: " + std::to_string(fps), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
+            // 显示图像
+            cv::imshow("frame", frame);
+            cv::imshow("binary", binary);
+            if (cv::waitKey(1) == 27) break;
+        }
+        cap.release();
+        cv::destroyAllWindows();
+    };
+
+private:
+    GPIOHandler& gpio;
+    State& state;
+    bool isVideo;
+    std::string videopath;
+    std::string audiopath;
+    std::string onnxmodelpath;
+    int width;
+    int height;
+    int init_pwm;
+    int target_pwm;
+};

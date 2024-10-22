@@ -3,14 +3,14 @@
 // std
 #include <algorithm>
 #include <numeric>
+#include <atomic>
 
 // opencv
 #include <opencv2/opencv.hpp>
 
 const std::map<int, std::string> directions = {
-	{0, "直行"},
-	{1, "左转"},
-	{2, "右转"}
+	{0, "向左变道"},
+	{1, "向右变道"}
 };
 
 // 边线结构体
@@ -58,9 +58,9 @@ struct CrossWalk :public cv::RotatedRect {
 };
 
 // 赛道结构体
-struct Track {
-	Track() = default;
-	Track(const Line& l1, const Line& l2) {
+struct Lane {
+	Lane() = default;
+	Lane(const Line& l1, const Line& l2) {
 		if (l1.center.x < l2.center.x) {
 			left_line = l1, right_line = l2;
 		}
@@ -75,11 +75,8 @@ struct Track {
 	cv::Point2f center;
 };
 
-// 检测结果结构体
-struct DetectResult
-{
-	cv::Point2f center;
-	bool has_crosswalk;
-	bool has_blueboard;
-	int direction;
+class State {
+public:
+    std::atomic<bool> has_crosswalk{false};
+    std::atomic<bool> has_blueboard{false};
 };
