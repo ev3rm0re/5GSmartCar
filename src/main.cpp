@@ -37,8 +37,8 @@ void videoRecord() {
     writer.release();
 }
 
-void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& has_crosswalk, bool& isVideo, 
-                        std::string& videopath, int& width, int& height) {
+void videoProcessing(Controller& controller, LineDetector& detector, std::atomic<bool>& has_crosswalk, 
+            std::atomic<bool>& has_blueboard, bool& isVideo, std::string& videopath, int& width, int& height) {
     cv::VideoCapture cap;
     if (isVideo) {
         std::string video_path = videopath;
@@ -64,7 +64,8 @@ void videoProcessing(Controller& controller, LineDetector& detector, std::atomic
 
         DetectResult result; 
         detector.detect(&frame, &result);
-        std::cout << "是否有蓝色挡板: " << result.has_blueboard << std::endl;
+        // std::cout << "是否有蓝色挡板: " << result.has_blueboard << std::endl;
+        has_blueboard.store(result.has_blueboard, std::memory_order_release);
         has_crosswalk.store(result.has_crosswalk, std::memory_order_release);
         if (result.has_crosswalk) {
             // TODO: 变道控制
@@ -137,7 +138,7 @@ int main() {
 
     // std::thread video_record_thread(videoRecord);
     std::thread video_thread(videoProcessing, std::ref(controller), std::ref(detector), std::ref(has_crosswalk), 
-                            std::ref(isvideo), std::ref(videopath), std::ref(width), std::ref(height));
+                std::ref(has_blueboard), std::ref(isvideo), std::ref(videopath), std::ref(width), std::ref(height));
     try {
         // video_record_thread.join();
         if (movecontrol) {

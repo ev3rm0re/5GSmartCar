@@ -41,11 +41,12 @@ void Controller::moveforward(std::atomic<bool>& has_crosswalk, std::atomic<bool>
             i = init_pwm;
             gpioPWM(pwm_pin, i);
             usleep(200 * 1000);
+            continue;
         }
         if (has_crosswalk.load(std::memory_order_acquire) == true && detected_crosswalk == false) {
             i = init_pwm;
             gpioPWM(pwm_pin, i);
-            system("aplay /home/pi/Code/5G_ws/medias/dz-banmaxian.wav");
+            // system("aplay /home/pi/Code/5G_ws/medias/dz-banmaxian.wav");
             sleep(3);
             has_crosswalk.store(false, std::memory_order_release);
             detected_crosswalk = true;

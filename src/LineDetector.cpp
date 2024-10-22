@@ -203,8 +203,8 @@ int LineDetector::getArrow(cv::Mat* frame) const {
 }
 
 bool LineDetector::hasBlueBoard(cv::Mat* frame) const {
-	cv::Scalar upperblue = cv::Scalar(124, 255, 255);
-	cv::Scalar lowerblue = cv::Scalar(100, 43, 46);
+	cv::Scalar upperblue = cv::Scalar(125, 255, 255);
+	cv::Scalar lowerblue = cv::Scalar(90, 130, 150);
 
 	cv::Mat hsv_frame;
 
@@ -217,7 +217,7 @@ bool LineDetector::hasBlueBoard(cv::Mat* frame) const {
     cv::morphologyEx(blue_mask, blue_mask, cv::MORPH_CLOSE, kernel);
 
 	double blue_area = cv::countNonZero(blue_mask);
-	std::cout << "蓝色区域面积: " << blue_area << std::endl;
+	// std::cout << "蓝色区域面积: " << blue_area << std::endl;
 
 	return blue_area > width * height / 1.5;
 }
