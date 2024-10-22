@@ -19,7 +19,7 @@ public:
             videoCapture >> frame;
             videoWriter.write(frame);
             frameCount++;
-            if (frameCount % 100 == 0) Logger::getLogger().info("Frame count: " + std::to_string(frameCount));
+            if (frameCount % 100 == 0) Logger::getLogger()->info("Frame count: " + std::to_string(frameCount));
         }
     }
 
