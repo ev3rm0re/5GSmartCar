@@ -7,6 +7,8 @@
 
 #include "Logger.hpp"
 
+
+// GPIOHandler: 负责 GPIO 操作
 class GPIOHandler {
 public:
     GPIOHandler(int servo_pin, int pwm_pin) {

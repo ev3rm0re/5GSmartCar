@@ -9,6 +9,8 @@
 #include "Controller.hpp"
 #include "Logger.hpp"
 
+
+// VideoProcessor: 负责视频处理
 class VideoProcessor {
 public:
     VideoProcessor(bool isVideo, std::string videopath, std::string audiopath, int width, int height, std::string onnxmodelpath, 

@@ -5,6 +5,8 @@
 #include <ctime>
 #include <opencv2/opencv.hpp>
 
+
+// Logger: 负责日志输出
 class Logger {
 public:
     // 日志级别枚举

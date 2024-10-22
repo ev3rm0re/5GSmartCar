@@ -8,6 +8,7 @@
 #include "Logger.hpp"
 
 
+// LineDetector: 负责边线检测
 class LineDetector {
 public:
     LineDetector(const int width, const int height) : width(width), height(height) {};
@@ -97,6 +98,7 @@ private:
 };
 
 
+// LaneDetector: 负责车道检测
 class LaneDetector {
 public:
    	LaneDetector(const int width, const int height) : width(width), height(height) {};
@@ -124,6 +126,7 @@ private:
 };
 
 
+// CrosswalkDetector: 负责人行横道检测
 class CrosswalkDetector {
 public:
     CrosswalkDetector(int width, int height) : width(width), height(height) {};
@@ -157,6 +160,7 @@ private:
 };
 
 
+// BinaryImageProcessor: 负责二值化图像处理
 class BinaryImageProcessor {
 public:
     BinaryImageProcessor(int width, int height) : width(width), height(height) {};
@@ -194,6 +198,7 @@ private:
 };
 
 
+// ArrowProcessor: 负责箭头检测
 class ArrowProcessor {
 public:
     ArrowProcessor(const std::string& modelPath) : onnxModelPath(modelPath) {};
@@ -240,6 +245,7 @@ private:
 };
 
 
+// BlueBoardDetector: 负责蓝色板检测
 class BlueBoardDetector {
 public:
 	BlueBoardDetector(int width, int height) : width(width), height(height) {};

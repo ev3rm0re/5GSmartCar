@@ -4,6 +4,8 @@
 
 #include "Logger.hpp"
 
+
+// VideoRecorder: 负责视频录制
 class VideoRecorder {
 public:
     VideoRecorder(const std::string outputpath, int width, int height) : width(width), height(height) {

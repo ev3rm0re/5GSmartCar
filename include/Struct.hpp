@@ -8,10 +8,12 @@
 // opencv
 #include <opencv2/opencv.hpp>
 
+
 const std::map<int, std::string> directions = {
 	{0, "向左变道"},
 	{1, "向右变道"}
 };
+
 
 // 边线结构体
 struct Line : public std::vector<cv::Point> {
@@ -31,6 +33,7 @@ struct Line : public std::vector<cv::Point> {
 	double area = 0.0;
 	double slope = 0.0;
 };
+
 
 // 人行横道结构体
 struct CrossWalk :public cv::RotatedRect {
@@ -57,6 +60,7 @@ struct CrossWalk :public cv::RotatedRect {
 	double area = 0.0;
 };
 
+
 // 赛道结构体
 struct Lane {
 	Lane() = default;
@@ -75,6 +79,8 @@ struct Lane {
 	cv::Point2f center;
 };
 
+
+// 状态结构体
 class State {
 public:
     std::atomic<bool> has_crosswalk{false};
