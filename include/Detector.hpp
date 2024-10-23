@@ -94,7 +94,6 @@ public:
 private:
 	int width;
 	int height;
-	std::string onnxmodelpath;
 };
 
 

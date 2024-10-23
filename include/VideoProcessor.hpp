@@ -1,6 +1,7 @@
 #pragma once
 
 #include <opencv2/opencv.hpp>
+#include <csignal>
 #include <unistd.h>
 #include <time.h>
 
@@ -10,13 +11,16 @@
 #include "Logger.hpp"
 
 
+extern std::atomic<bool> isRunning;
+extern GPIOHandler gpio;
+
 // VideoProcessor: 负责视频处理
 class VideoProcessor {
 public:
     VideoProcessor(bool isVideo, std::string videopath, std::string audiopath, int width, int height, std::string onnxmodelpath, 
-                    int init_pwm, int target_pwm, State& state, GPIOHandler& gpio) : 
+                    int init_pwm, int target_pwm, State& state) : 
                     isVideo(isVideo), videopath(videopath), audiopath(audiopath), width(width), height(height), 
-                    onnxmodelpath(onnxmodelpath), init_pwm(init_pwm), target_pwm(target_pwm), state(state), gpio(gpio) {};
+                    onnxmodelpath(onnxmodelpath), init_pwm(init_pwm), target_pwm(target_pwm), state(state) {};
 
     void videoProcessing() {
         cv::VideoCapture cap;
@@ -33,8 +37,6 @@ public:
             return;
         }
 
-        // 初始化舵机控制器
-        ServoController servo(gpio, 12);
         // 初始化线检测器
         LineDetector lineDetector(width, height);
         // 初始化赛道检测器
@@ -50,7 +52,7 @@ public:
 
         int threshold = 160;
 
-        while (cap.isOpened()) {
+        while (cap.isOpened() && isRunning.load()) {
             cv::Mat frame;
             std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
             cap >> frame;
@@ -75,11 +77,11 @@ public:
             bool has_crosswalk = crosswalkDetector.hasCrosswalk(&binary);
             if (has_crosswalk && !state.has_crosswalk.load()) {
                 state.has_crosswalk.store(true);
-                system(("aplay " + audiopath).data());
+                // system(("aplay " + audiopath).data());
                 // 检测箭头
                 int direction = arrowProcessor.detectArrowDirection(&frame);
                 Logger::getLogger()->info("检测到箭头，方向为: " + std::to_string(direction));
-                servo.changeLane(direction, width);
+                gpio.changeLane(direction, width);
             }
 
             // 检测边线
@@ -104,7 +106,7 @@ public:
                 cv::line(frame, lane.left_line.center + cv::Point2f(0, roi_start), lane.left_line.center + cv::Point2f(0, roi_start), cv::Scalar(0, 255, 0), 2);
                 cv::circle(frame, lane.center + cv::Point2f(0, roi_start), 5, cv::Scalar(0, 255, 0), -1);
                 // 舵机控制
-                servo.setAngle(lane.center.x, width);
+                gpio.setAngle(lane.center.x, width);
             }
             
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
@@ -113,14 +115,15 @@ public:
             cv::putText(frame, "FPS: " + std::to_string(fps), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
             // 显示图像
             Logger::getLogger()->showMat("frame", frame);
-            if (cv::waitKey(1) == 27) break;
         }
+        Logger::getLogger()->info("释放摄像头资源...");
         cap.release();
+        Logger::getLogger()->info("关闭所有窗口...");
         cv::destroyAllWindows();
     };
 
 private:
-    GPIOHandler& gpio;
+    // GPIOHandler& gpio;
     State& state;
     bool isVideo;
     std::string videopath;

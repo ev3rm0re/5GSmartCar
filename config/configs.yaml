@@ -1,8 +1,8 @@
 gpio:
   servo_pin: 12
-  pwm_pin: 13
+  motor_pin: 13
   init_pwm: 12600
-  target_pwm: 13000
+  target_pwm: 12800
 
 frame:
   width: 300
@@ -16,9 +16,11 @@ video:
   videopath: "/home/pi/Code/5GSmartCar/medias/arrow.avi"
 
 audio:
-  isaudio: false
+  playaudio: false
   audiopath: "/home/pi/Code/5GSmartCar/medias/dz-banmaxian.wav"
 
-movecontrol: false
+movecontrol: true
+
+recordvideo: false
 
 loglevel: "DEBUG"
