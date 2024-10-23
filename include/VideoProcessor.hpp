@@ -67,15 +67,15 @@ public:
                 state.has_blueboard.store(false);
             }
             // 取ROI并二值化
-            double roi_start = height / 2;
-            cv::Rect ROI = cv::Rect(0, height / 2, width, height - roi_start);
+            double roi_start = height / 3.0;
+            cv::Rect ROI = cv::Rect(0, roi_start, width, height - roi_start);
             cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
 
             // 检测斑马线
             bool has_crosswalk = crosswalkDetector.hasCrosswalk(&binary);
-            if (has_crosswalk && !state.has_crosswalk) {
+            if (has_crosswalk && !state.has_crosswalk.load()) {
+                state.has_crosswalk.store(true);
                 system(("aplay " + audiopath).data());
-                state.has_crosswalk = true;
                 // 检测箭头
                 int direction = arrowProcessor.detectArrowDirection(&frame);
                 Logger::getLogger()->info("检测到箭头，方向为: " + std::to_string(direction));

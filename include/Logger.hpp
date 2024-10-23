@@ -58,7 +58,7 @@ public:
 
     // 显示Mat图像
     void showMat(const std::string& windowName, cv::Mat& frame) {
-        if (currentLogLevel >= DEBUG) {
+        if (currentLogLevel <= DEBUG) {
             cv::imshow(windowName, frame);
             cv::waitKey(1);
         }

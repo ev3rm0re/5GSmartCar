@@ -51,9 +51,9 @@ public:
         gpioSetPWMfrequency(pin, 50);
         gpioSetPWMrange(pin, 100);
         gpioPWM(pin, gpio.angleToDutyCycle(70));
-        gpioDelay(2000 * 1000);
+        gpioDelay(1500 * 1000);
         gpioPWM(pin, gpio.angleToDutyCycle(130));
-        gpioDelay(2000 * 1000);
+        gpioDelay(1500 * 1000);
         gpioPWM(pin, gpio.angleToDutyCycle(100));
         Logger::getLogger()->info("舵机初始化成功");
     }
@@ -79,17 +79,20 @@ public:
     void changeLane(int direction, int width) {
         double first_angle, second_angle;
         if (direction == 0) {
+            Logger::getLogger()->info("向左变道");
             first_angle = 130;
             second_angle = 70;
         } else if (direction == 1) {
+            Logger::getLogger()->info("向右变道");
             first_angle = 70;
             second_angle = 130;
         }
         gpio.setPWM(pin, gpio.angleToDutyCycle(first_angle));
-        gpioDelay(2000);
+        gpioDelay(2000 * 1000);
         gpio.setPWM(pin, gpio.angleToDutyCycle(100));
-        gpioDelay(2000);
+        gpioDelay(500 * 1000);
         gpio.setPWM(pin, gpio.angleToDutyCycle(second_angle));
+        gpioDelay(500 * 1000);
     }
 
 private:
@@ -131,8 +134,7 @@ public:
             if (state.has_crosswalk.load() && !detected_crosswalk) {
                 i = init_pwm;
                 gpio.setPWM(pin, i);
-                gpioDelay(3000 * 1000);
-                state.has_crosswalk.store(false);
+                gpioDelay(4000 * 1000);
                 detected_crosswalk = true;
             }
             if (i < target_pwm) {

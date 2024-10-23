@@ -18,11 +18,11 @@ int main() {
 
     std::cout << "****************程序开始运行****************" << std::endl;
     // 判断是否有配置文件
-    if (access("/home/pi/Code/5G_ws/config/configs.yaml", F_OK) == -1) {
+    if (access("/home/pi/Code/5GSmartCar/config/configs.yaml", F_OK) == -1) {
         Logger::getLogger()->error("配置文件不存在");
         return -1;
     }
-    YAML::Node config = YAML::LoadFile("/home/pi/Code/5G_ws/config/configs.yaml");
+    YAML::Node config = YAML::LoadFile("/home/pi/Code/5GSmartCar/config/configs.yaml");
     // LOG_LEVEL
     std::string loglevel = config["loglevel"].as<std::string>();
     if (loglevel == "INFO") {
@@ -61,8 +61,8 @@ int main() {
 
     // 初始化状态
     State state;
-    state.has_crosswalk = false;
-    state.has_blueboard = false;
+    state.has_crosswalk.store(false);
+    state.has_blueboard.store(false);
 
     // 初始化 videoProcessor
     VideoProcessor videoProcessor(isvideo, videopath, audiopath, width, height, onnxmodelpath, init_pwm, target_pwm, state, std::ref(gpio));
