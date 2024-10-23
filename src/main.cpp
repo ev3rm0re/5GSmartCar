@@ -75,10 +75,10 @@ int main() {
     sigaction(SIGINT, &sigIntHandler, nullptr);
     sigaction(SIGTERM, &sigIntHandler, nullptr);
 
-    /******************************初始化部分******************************/
-    system("sudo killall pigpiod");
-  	system("sudo cp /home/pi/.Xauthority /root/");
-  	sleep(1);
+    /******************************系统初始化部分******************************/
+    // system("sudo killall pigpiod");
+  	// system("sudo cp /home/pi/.Xauthority /root/");
+  	// sleep(1);
 
     /******************************录像部分******************************/
     if (recordvideo) {
