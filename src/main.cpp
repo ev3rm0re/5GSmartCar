@@ -18,7 +18,7 @@ void signalHandler(int signum) { // 信号处理函数
     isRunning = false;
 }
 
-GPIOHandler gpio; // GPIOHandler 全局实例
+GPIOHandler gpio; // GPIOHandler 全局实例(必须放到主函数外面，不然不知道为什么会影响ctrl+c退出信号的获取)
 
 
 int main() {
@@ -75,11 +75,6 @@ int main() {
     sigaction(SIGINT, &sigIntHandler, nullptr);
     sigaction(SIGTERM, &sigIntHandler, nullptr);
 
-    /******************************系统初始化部分******************************/
-    // system("sudo killall pigpiod");
-  	// system("sudo cp /home/pi/.Xauthority /root/");
-  	// sleep(1);
-
     /******************************录像部分******************************/
     if (recordvideo) {
         VideoRecorder videoRecorder("/home/pi/Code/5GSmartCar/medias/output.avi");
@@ -100,16 +95,11 @@ int main() {
     std::thread videoThread(&VideoProcessor::videoProcessing, &videoProcessor);
     std::thread moveThread;
     if (movecontrol) moveThread = std::thread(&GPIOHandler::moveForward, &gpio, std::ref(state));
-
+    // 等待线程结束
     videoThread.join();
     if (movecontrol) moveThread.join();
 
-    /******************************主循环******************************/
-    while (isRunning.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 防止空循环
-    }
-
     /******************************结束部分******************************/
-    Logger::getLogger()->info("****主线程结束****");
+    std::cout << "****************主线程结束****************" << std::endl;
     return 0;
 }
