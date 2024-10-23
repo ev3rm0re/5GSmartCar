@@ -1,7 +1,7 @@
 #include <opencv2/opencv.hpp>
 
 int main() {
-    cv::VideoCapture cap(0, cv::CAP_V4L2);
+    cv::VideoCapture cap("/dev/cam0", cv::CAP_V4L2);
     if (!cap.isOpened()) {
         std::cerr << "Error opening camera." << std::endl;
         return -1;

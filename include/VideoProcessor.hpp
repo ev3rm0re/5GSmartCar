@@ -25,7 +25,7 @@ public:
             cap.open(video_path);
         }
         else {
-            cap.open(0, cv::CAP_V4L2);
+            cap.open("/dev/cam0", cv::CAP_V4L2);
         }
 
         if (!cap.isOpened()) {

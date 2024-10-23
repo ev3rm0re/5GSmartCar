@@ -7,6 +7,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include "VideoProcessor.hpp"
+#include "VideoRecorder.hpp"
 #include "Controller.hpp"
 #include "Logger.hpp"
 
@@ -58,7 +59,7 @@ int main() {
 
     // 初始化 gpio
     GPIOHandler gpio(servo_pin, pwm_pin);
-
+    
     // 初始化状态
     State state;
     state.has_crosswalk.store(false);
