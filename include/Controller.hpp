@@ -7,7 +7,7 @@
 
 #include "Logger.hpp"
 
-extern std::atomic<bool> isRunning; // 引入全局变量
+extern std::atomic<bool> isRunning, cameraOpened; // 引入全局变量
 
 // GPIOHandler: 负责 GPIO 操作
 class GPIOHandler {
@@ -54,6 +54,12 @@ public:
         Logger::getLogger()->info("ServoController 初始化成功");
     }
 
+    ~ServoController() {
+        gpio.setPWM(servo_pin, angleToDutyCycle(100));
+        gpio.setDelay(500 * 1000);
+        Logger::getLogger()->info("舵机归位, ServoController 销毁成功");
+    }
+
     // 设置舵机的角度
     double angleToDutyCycle(double angle) {
         return 2.5 + (angle / 180.0) * 10.0;
@@ -81,11 +87,11 @@ public:
     void changeLane(int direction, int width) {
         double first_angle, second_angle;
         if (direction == 0) {
-            Logger::getLogger()->info("向左变道");
+            Logger::getLogger()->info("左变道...");
             first_angle = 130;
             second_angle = 70;
         } else if (direction == 1) {
-            Logger::getLogger()->info("向右变道");
+            Logger::getLogger()->info("右变道...");
             first_angle = 70;
             second_angle = 130;
         }
@@ -129,11 +135,19 @@ public:
         Logger::getLogger()->info("MotorController 初始化成功");
     }
 
+    ~MotorController() {
+        gpio.setPWM(motor_pin, init_pwm);
+        Logger::getLogger()->info("电机归零, MotorController 销毁成功");
+    }
+
     void moveForward(State& state) {
-        sleep(5);
         int i = init_pwm;
         bool detected_crosswalk = false;
         while (true && isRunning.load()) {
+            if (!cameraOpened.load()) { // 摄像头未打开
+                usleep(1000);
+                continue;
+            }
             if (state.has_blueboard.load()) {
                 i = init_pwm;
                 gpio.setPWM(motor_pin, i);

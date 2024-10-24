@@ -12,7 +12,7 @@
 #include "Logger.hpp"
 
 
-std::atomic<bool> isRunning(true); // 用于控制程序运行状态
+std::atomic<bool> isRunning(true), cameraOpened(false);
 
 void signalHandler(int signum) { // 信号处理函数
     isRunning = false;
@@ -23,18 +23,26 @@ GPIOHandler gpio; // GPIOHandler 全局实例(必须放到主函数外面，不�
 
 
 int main() {
-    /******************************系统设置部分******************************/
+    /******************************系统设置******************************/
     system("sudo cp /home/pi/.Xauthority /root"); // 用于解决无法显示图像的问题
 
+    /******************************信号处理函数******************************/
+    struct sigaction sigIntHandler;
+    sigIntHandler.sa_handler = signalHandler;
+    sigaction(SIGINT, &sigIntHandler, nullptr);
+    sigaction(SIGABRT, &sigIntHandler, nullptr);
+    sigaction(SIGTERM, &sigIntHandler, nullptr);
+
     std::cout << "****************程序开始运行****************" << std::endl;
-    // 判断是否有配置文件
+
+    /******************************加载配置文件******************************/
     if (access("/home/pi/Code/5GSmartCar/config/configs.yaml", F_OK) == -1) {
         Logger::getLogger()->error("配置文件不存在");
         return -1;
     }
     YAML::Node config = YAML::LoadFile("/home/pi/Code/5GSmartCar/config/configs.yaml");
 
-    /******************************设置LOGLEVEL部分******************************/
+    /******************************设置LOGLEVEL******************************/
     std::string loglevel = config["loglevel"].as<std::string>();
     if (loglevel == "INFO") {
         Logger::getLogger()->setLogLevel(Logger::INFO);
@@ -46,7 +54,7 @@ int main() {
         Logger::getLogger()->setLogLevel(Logger::DEBUG);
     }
 
-    /******************************参数获取部分******************************/
+    /******************************参数获取******************************/
     // gpio参数
     int servo_pin = config["gpio"]["servo_pin"].as<int>();
     int motor_pin = config["gpio"]["motor_pin"].as<int>();
@@ -58,8 +66,6 @@ int main() {
     // 音频路径
     bool playaudio = config["audio"]["playaudio"].as<bool>();
     std::string audiopath = config["audio"]["audiopath"].as<std::string>();
-    // 播放音频
-    if (playaudio) system(("aplay " + audiopath).data());
     // 检测参数
     std::string onnxmodelpath = config["linedetect"]["onnxmodelpath"].as<std::string>();
     // 获取 video 部分的参数
@@ -70,27 +76,21 @@ int main() {
     // 是否调用录像
     bool recordvideo = config["recordvideo"].as<bool>();
 
-    /******************************信号处理部分******************************/
-    struct sigaction sigIntHandler;
-    sigIntHandler.sa_handler = signalHandler;
-    sigaction(SIGINT, &sigIntHandler, nullptr);
-    sigaction(SIGTERM, &sigIntHandler, nullptr);
-
-    /******************************录像部分******************************/
+    /******************************录像******************************/
     if (recordvideo) {
         VideoRecorder videoRecorder("/home/pi/Code/5GSmartCar/medias/output.avi");
         videoRecorder.record();
         return 0;
     }
 
-    /******************************控制部分******************************/
+    /******************************控制******************************/
     // 初始化状态
     State state;
     state.has_crosswalk.store(false);
     state.has_blueboard.store(false);
 
     // 初始化 videoProcessor
-    VideoProcessor videoProcessor(isvideo, videopath, audiopath, width, height, onnxmodelpath, state, servo_pin);
+    VideoProcessor videoProcessor(isvideo, videopath, playaudio, audiopath, width, height, onnxmodelpath, state, servo_pin);
     // 初始化 motorController
     MotorController motorController(gpio, motor_pin, init_pwm, target_pwm);
 
@@ -102,7 +102,7 @@ int main() {
     videoThread.join();
     if (movecontrol) moveThread.join();
 
-    /******************************结束部分******************************/
+    /******************************结束******************************/
     std::cout << "****************主线程结束****************" << std::endl;
     return 0;
 }

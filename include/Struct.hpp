@@ -10,8 +10,8 @@
 
 
 const std::map<int, std::string> directions = {
-	{0, "向左变道"},
-	{1, "向右变道"}
+	{0, "左"},
+	{1, "右"}
 };
 
 

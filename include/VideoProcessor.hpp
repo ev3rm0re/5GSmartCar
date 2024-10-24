@@ -11,18 +11,19 @@
 #include "Logger.hpp"
 
 
-extern std::atomic<bool> isRunning;
+extern std::atomic<bool> isRunning, cameraOpened;
 extern GPIOHandler gpio;
 
 // VideoProcessor: 负责视频处理
 class VideoProcessor {
 public:
-    VideoProcessor(bool isVideo, std::string videopath, std::string audiopath, int width, int height, 
+    VideoProcessor(bool isVideo, std::string videopath, bool playaudio, std::string audiopath, int width, int height, 
                     std::string onnxmodelpath, State& state, int servo_pin) : 
-                    isVideo(isVideo), videopath(videopath), audiopath(audiopath), width(width), height(height), 
+                    isVideo(isVideo), videopath(videopath), playaudio(playaudio), audiopath(audiopath), width(width), height(height), 
                     onnxmodelpath(onnxmodelpath), state(state), servo_pin(servo_pin) {};
 
     void videoProcessing() {
+        Logger::getLogger()->info("开始视频处理...");
         cv::VideoCapture cap;
         if (isVideo) {
             std::string video_path = videopath;
@@ -79,10 +80,12 @@ public:
             bool has_crosswalk = crosswalkDetector.hasCrosswalk(&binary);
             if (has_crosswalk && !state.has_crosswalk.load()) {
                 state.has_crosswalk.store(true);
-                // system(("aplay " + audiopath).data());
                 // 检测箭头
                 int direction = arrowProcessor.detectArrowDirection(&frame);
-                Logger::getLogger()->info("检测到箭头，方向为: " + std::to_string(direction));
+                Logger::getLogger()->info("检测到箭头，方向为: " + directions.at(direction));
+                if (playaudio == true) {
+                    system(("aplay " + audiopath).data());
+                }
                 servoController.changeLane(direction, width);
             }
 
@@ -117,6 +120,10 @@ public:
             cv::putText(frame, "FPS: " + std::to_string(fps), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
             // 显示图像
             Logger::getLogger()->showMat("frame", frame);
+            if (!cameraOpened.load()) {
+                cameraOpened.store(true); // 摄像头已经打开, 用于通知电机启动
+                Logger::getLogger()->info("摄像头已打开, 第一帧获取成功, 通知电机启动");
+            }
         }
         Logger::getLogger()->info("释放摄像头资源...");
         cap.release();
@@ -129,6 +136,7 @@ private:
     State& state;
     bool isVideo;
     std::string videopath;
+    bool playaudio;
     std::string audiopath;
     std::string onnxmodelpath;
     int servo_pin;
