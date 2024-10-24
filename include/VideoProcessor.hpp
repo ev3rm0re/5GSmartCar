@@ -40,7 +40,7 @@ public:
 
         // 初始化舵机控制器
         ServoController servoController(gpio, servo_pin);
-        // 初始化线检测器
+        // 初始化边线检测器
         LineDetector lineDetector(width, height);
         // 初始化赛道检测器
         LaneDetector laneDetector(width, height);
@@ -77,17 +77,18 @@ public:
             cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
             Logger::getLogger()->showMat("binary", binary);
 
-            // 检测斑马线
-            bool has_crosswalk = crosswalkDetector.hasCrosswalk(&binary);
-            if (has_crosswalk && !state.has_crosswalk.load()) {
-                state.has_crosswalk.store(true);
-                // 检测箭头
-                int direction = arrowProcessor.detectArrowDirection(&frame);
-                Logger::getLogger()->info("检测到箭头，方向为: " + directions.at(direction));
-                if (playaudio == true) {
-                    system(("aplay " + audiopath).data());
+            // 检测斑马线, 只检测一次
+            if (!state.has_crosswalk.load()) {
+                if (crosswalkDetector.hasCrosswalk(&binary)) {
+                    state.has_crosswalk.store(true);
+                    // 检测箭头
+                    int direction = arrowProcessor.detectArrowDirection(&frame);
+                    Logger::getLogger()->info("检测到箭头，方向为: " + directions.at(direction));
+                    if (playaudio == true) {
+                        system(("aplay " + audiopath).data());
+                    }
+                    servoController.changeLane(direction, width);
                 }
-                servoController.changeLane(direction, width);
             }
 
             // 检测边线
@@ -113,6 +114,9 @@ public:
                 cv::circle(frame, lane.center + cv::Point2f(0, roi_start), 5, cv::Scalar(0, 255, 0), -1);
                 // 舵机控制
                 servoController.setAngle(lane.center.x, width);
+            }
+            else {
+                servoController.setAngle(width / 2, width);
             }
             
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();

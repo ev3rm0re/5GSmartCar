@@ -21,6 +21,9 @@ void signalHandler(int signum) { // 信号处理函数
 
 GPIOHandler gpio; // GPIOHandler 全局实例(必须放到主函数外面，不然不知道为什么会影响ctrl+c退出信号的获取)
 
+void voiceControl() {
+    system("aplay /home/pi/Code/5GSmartCar/medias/sunshangxiang.wav");
+}
 
 int main() {
     /******************************系统设置******************************/

@@ -16,8 +16,8 @@ video:
   videopath: "/home/pi/Code/5GSmartCar/medias/crosswalk.mp4"
 
 audio:
-  playaudio: false
-  audiopath: "/home/pi/Code/5GSmartCar/medias/dz-banmaxian.wav"
+  playaudio: true
+  audiopath: "/home/pi/Code/5GSmartCar/medias/sunshangxiang.wav"
 
 movecontrol: true
 
