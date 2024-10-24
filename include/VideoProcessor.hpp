@@ -75,6 +75,7 @@ public:
             double roi_start = height / 3.0;
             cv::Rect ROI = cv::Rect(0, roi_start, width, height - roi_start);
             cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
+            Logger::getLogger()->showMat("binary", binary);
 
             // 检测斑马线
             bool has_crosswalk = crosswalkDetector.hasCrosswalk(&binary);

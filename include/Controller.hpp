@@ -141,6 +141,7 @@ public:
     }
 
     void moveForward(State& state) {
+        sleep(2);
         int i = init_pwm;
         bool detected_crosswalk = false;
         while (true && isRunning.load()) {
@@ -156,6 +157,10 @@ public:
             }
             if (state.has_crosswalk.load() && !detected_crosswalk) {
                 i = init_pwm;
+                gpio.setPWM(motor_pin, i);
+                gpio.setDelay(200 * 1000);
+                gpio.setPWM(motor_pin, i - 500);
+                gpio.setDelay(800 * 1000);
                 gpio.setPWM(motor_pin, i);
                 gpio.setDelay(4000 * 1000);
                 detected_crosswalk = true;

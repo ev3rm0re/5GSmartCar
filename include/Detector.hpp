@@ -130,9 +130,9 @@ class CrosswalkDetector {
 public:
     CrosswalkDetector(int width, int height) : width(width), height(height) {};
     bool isCrosswalk(CrossWalk& crosswalk) const {
-        return std::abs(crosswalk.slope) > 5.0 && 
-		        crosswalk.area > width * height / 120 && crosswalk.area < width * height / 50.0 && 
-		        crosswalk.height / crosswalk.width < 2.0 && crosswalk.height / crosswalk.width > 0.1;
+        return std::abs(crosswalk.slope) > 0.8 && 
+		        crosswalk.area > width * height / 120.0 && 
+		        crosswalk.height / crosswalk.width < 3.0 && crosswalk.height / crosswalk.width > 0.1;
     };
     bool hasCrosswalk(cv::Mat* binary) const {
         bool has_crosswalk = false;

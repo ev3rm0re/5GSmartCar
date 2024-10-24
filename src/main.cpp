@@ -32,6 +32,7 @@ int main() {
     sigaction(SIGINT, &sigIntHandler, nullptr);
     sigaction(SIGABRT, &sigIntHandler, nullptr);
     sigaction(SIGTERM, &sigIntHandler, nullptr);
+    sigaction(SIGCONT, &sigIntHandler, nullptr);
 
     std::cout << "****************程序开始运行****************" << std::endl;
 
