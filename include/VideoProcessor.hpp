@@ -17,10 +17,10 @@ extern GPIOHandler gpio;
 // VideoProcessor: 负责视频处理
 class VideoProcessor {
 public:
-    VideoProcessor(bool isVideo, std::string videopath, std::string audiopath, int width, int height, std::string onnxmodelpath, 
-                    int init_pwm, int target_pwm, State& state) : 
+    VideoProcessor(bool isVideo, std::string videopath, std::string audiopath, int width, int height, 
+                    std::string onnxmodelpath, State& state, int servo_pin) : 
                     isVideo(isVideo), videopath(videopath), audiopath(audiopath), width(width), height(height), 
-                    onnxmodelpath(onnxmodelpath), init_pwm(init_pwm), target_pwm(target_pwm), state(state) {};
+                    onnxmodelpath(onnxmodelpath), state(state), servo_pin(servo_pin) {};
 
     void videoProcessing() {
         cv::VideoCapture cap;
@@ -37,6 +37,8 @@ public:
             return;
         }
 
+        // 初始化舵机控制器
+        ServoController servoController(gpio, servo_pin);
         // 初始化线检测器
         LineDetector lineDetector(width, height);
         // 初始化赛道检测器
@@ -81,7 +83,7 @@ public:
                 // 检测箭头
                 int direction = arrowProcessor.detectArrowDirection(&frame);
                 Logger::getLogger()->info("检测到箭头，方向为: " + std::to_string(direction));
-                gpio.changeLane(direction, width);
+                servoController.changeLane(direction, width);
             }
 
             // 检测边线
@@ -106,7 +108,7 @@ public:
                 cv::line(frame, lane.left_line.center + cv::Point2f(0, roi_start), lane.left_line.center + cv::Point2f(0, roi_start), cv::Scalar(0, 255, 0), 2);
                 cv::circle(frame, lane.center + cv::Point2f(0, roi_start), 5, cv::Scalar(0, 255, 0), -1);
                 // 舵机控制
-                gpio.setAngle(lane.center.x, width);
+                servoController.setAngle(lane.center.x, width);
             }
             
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
@@ -129,9 +131,8 @@ private:
     std::string videopath;
     std::string audiopath;
     std::string onnxmodelpath;
+    int servo_pin;
     int width;
     int height;
-    int init_pwm;
-    int target_pwm;
     Logger logger;
 };

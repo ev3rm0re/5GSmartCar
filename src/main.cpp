@@ -16,12 +16,16 @@ std::atomic<bool> isRunning(true); // 用于控制程序运行状态
 
 void signalHandler(int signum) { // 信号处理函数
     isRunning = false;
+    Logger::getLogger()->info("接收到信号: " + std::to_string(signum) + "，程序即将退出...");
 }
 
 GPIOHandler gpio; // GPIOHandler 全局实例(必须放到主函数外面，不然不知道为什么会影响ctrl+c退出信号的获取)
 
 
 int main() {
+    /******************************系统设置部分******************************/
+    system("sudo cp /home/pi/.Xauthority /root"); // 用于解决无法显示图像的问题
+
     std::cout << "****************程序开始运行****************" << std::endl;
     // 判断是否有配置文件
     if (access("/home/pi/Code/5GSmartCar/config/configs.yaml", F_OK) == -1) {
@@ -66,9 +70,6 @@ int main() {
     // 是否调用录像
     bool recordvideo = config["recordvideo"].as<bool>();
 
-    /******************************初始化GPIO部分******************************/
-    gpio.initGPIO(servo_pin, motor_pin, init_pwm, target_pwm);
-
     /******************************信号处理部分******************************/
     struct sigaction sigIntHandler;
     sigIntHandler.sa_handler = signalHandler;
@@ -89,12 +90,14 @@ int main() {
     state.has_blueboard.store(false);
 
     // 初始化 videoProcessor
-    VideoProcessor videoProcessor(isvideo, videopath, audiopath, width, height, onnxmodelpath, init_pwm, target_pwm, state);
+    VideoProcessor videoProcessor(isvideo, videopath, audiopath, width, height, onnxmodelpath, state, servo_pin);
+    // 初始化 motorController
+    MotorController motorController(gpio, motor_pin, init_pwm, target_pwm);
 
     // 初始化检测线程和移动线程
     std::thread videoThread(&VideoProcessor::videoProcessing, &videoProcessor);
     std::thread moveThread;
-    if (movecontrol) moveThread = std::thread(&GPIOHandler::moveForward, &gpio, std::ref(state));
+    if (movecontrol) moveThread = std::thread(&MotorController::moveForward, &motorController, std::ref(state));
     // 等待线程结束
     videoThread.join();
     if (movecontrol) moveThread.join();
