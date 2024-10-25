@@ -79,20 +79,20 @@ public:
             cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
             Logger::getLogger()->showMat("binary", binary);
 
-            // // 检测斑马线, 只检测一次
-            // if (!state.has_crosswalk.load()) {
-            //     if (crosswalkDetector.hasCrosswalk(&binary)) {
-            //         state.has_crosswalk.store(true);
-            //         // 检测箭头
-            //         int direct = arrowProcessor.detectArrowDirection(&frame);
-            //         Logger::getLogger()->info("检测到箭头，方向为: " + directions.at(direct));
-            //         if (playaudio == true) {
-            //             system(("aplay " + audiopath).data());
-            //         }
-            //         direction.store(direct);
-            //         mode.store(1);
-            //     }
-            // }
+            // 检测斑马线, 只检测一次
+            if (!state.has_crosswalk.load()) {
+                if (crosswalkDetector.hasCrosswalk(&binary)) {
+                    state.has_crosswalk.store(true);
+                    // 检测箭头
+                    int direct = arrowProcessor.detectArrowDirection(&frame);
+                    Logger::getLogger()->info("检测到箭头，方向为: " + directions.at(direct));
+                    if (playaudio == true) {
+                        system(("aplay " + audiopath).data());
+                    }
+                    direction.store(direct);
+                    mode.store(1);
+                }
+            }
 
             // TODO: 检测锥桶
             if (!detectedCone.load()) {
