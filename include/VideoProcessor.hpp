@@ -11,8 +11,8 @@
 #include "Logger.hpp"
 
 
-extern std::atomic<bool> isRunning, cameraOpened, detectedCone;
-extern std::atomic<int> direction, mode;
+extern std::atomic<bool> isRunning, cameraOpened;
+extern std::atomic<int> direction, mode, detectedCone;
 extern std::atomic<double> lane_center;
 extern GPIOHandler gpio;
 
@@ -81,8 +81,9 @@ public:
 
             // 检测斑马线, 只检测一次
             if (!state.has_crosswalk.load()) {
-                if (crosswalkDetector.hasCrosswalk(&binary)) {
+                if (crosswalkDetector.hasCrosswalk(&binary)) { // 检测到斑马线
                     state.has_crosswalk.store(true);
+                    Logger::getLogger()->info("检测到斑马线");
                     // 检测箭头
                     int direct = arrowProcessor.detectArrowDirection(&frame);
                     Logger::getLogger()->info("检测到箭头，方向为: " + directions.at(direct));
@@ -94,11 +95,10 @@ public:
                 }
             }
 
-            // TODO: 检测锥桶
-            if (!detectedCone.load()) {
+            // 检测锥桶
+            if (detectedCone.load() < 4) {
                 if (coneDetector.hasCone(&frame)) {
                     Logger::getLogger()->info("检测到锥桶");
-                    detectedCone.store(true);
                     mode.store(2);
                 }
             }

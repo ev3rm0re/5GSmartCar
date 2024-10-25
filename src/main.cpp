@@ -12,8 +12,8 @@
 #include "Logger.hpp"
 
 
-std::atomic<bool> isRunning(true), cameraOpened(false), detectedCone(false);
-std::atomic<int> direction, mode(0);
+std::atomic<bool> isRunning(true), cameraOpened(false);
+std::atomic<int> direction, mode(0), detectedCone(0);
 std::atomic<double> lane_center;
 
 void signalHandler(int signum) { // 信号处理函数
@@ -22,10 +22,6 @@ void signalHandler(int signum) { // 信号处理函数
 }
 
 GPIOHandler gpio; // GPIOHandler 全局实例(必须放到主函数外面，不然不知道为什么会影响ctrl+c退出信号的获取)
-
-void voiceControl() {
-    system("aplay /home/pi/Code/5GSmartCar/medias/sunshangxiang.wav");
-}
 
 int main() {
     /******************************系统设置******************************/

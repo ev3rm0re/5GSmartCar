@@ -7,8 +7,8 @@
 
 #include "Logger.hpp"
 
-extern std::atomic<bool> isRunning, cameraOpened, detectedCone; // 引入全局变量
-extern std::atomic<int> mode, direction;
+extern std::atomic<bool> isRunning, cameraOpened; // 引入全局变量
+extern std::atomic<int> mode, direction, detectedCone;
 extern std::atomic<double> lane_center;
 
 // GPIOHandler: 负责 GPIO 操作
@@ -108,7 +108,7 @@ public:
             }
             else if (mode.load() == 2) {
                 Logger::getLogger()->info("绕行锥桶...");
-                if (cone_count % 2 == 0) {
+                if (detectedCone.load() % 2 == 0) {
                     gpio.setPWM(servo_pin, angleToDutyCycle(120));
                     gpio.setDelay(300 * 1000);
                     gpio.setPWM(servo_pin, angleToDutyCycle(80));
@@ -117,7 +117,6 @@ public:
                     gpio.setDelay(300 * 1000);
                     gpio.setPWM(servo_pin, angleToDutyCycle(100));
                     gpio.setDelay(300 * 1000);
-                    cone_count++;
                 } else {
                     gpio.setPWM(servo_pin, angleToDutyCycle(80));
                     gpio.setDelay(300 * 1000);
@@ -127,9 +126,8 @@ public:
                     gpio.setDelay(300 * 1000);
                     gpio.setPWM(servo_pin, angleToDutyCycle(100));
                     gpio.setDelay(300 * 1000);
-                    cone_count++;
                 }
-                detectedCone.store(false);
+                detectedCone.store(detectedCone.load() + 1);
                 mode.store(0);
             }
         }
@@ -157,7 +155,6 @@ private:
     double angle_outmax = 45.0;
     double angle_outmin = -45.0;
     int width;
-    int cone_count = 0;
 };
 
 
