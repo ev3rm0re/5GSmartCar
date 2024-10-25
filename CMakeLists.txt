@@ -25,4 +25,4 @@ link_libraries(${YAMLCPP_LIBRARIES})
 aux_source_directory(src DIR_SRCS)
 add_executable(${PROJECT_NAME} ${DIR_SRCS})
 
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${PIGPIO_LIBRARY} ${YAMLCPP_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${PIGPIO_LIBRARY} ${YAMLCPP_LIBRARIES} atomic)

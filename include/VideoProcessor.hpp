@@ -11,16 +11,18 @@
 #include "Logger.hpp"
 
 
-extern std::atomic<bool> isRunning, cameraOpened;
+extern std::atomic<bool> isRunning, cameraOpened, detectedCone;
+extern std::atomic<int> direction, mode;
+extern std::atomic<double> lane_center;
 extern GPIOHandler gpio;
 
 // VideoProcessor: 负责视频处理
 class VideoProcessor {
 public:
-    VideoProcessor(bool isVideo, std::string videopath, bool playaudio, std::string audiopath, int width, int height, 
+    VideoProcessor(int initialThreshold, bool isVideo, std::string videopath, bool playaudio, std::string audiopath, int width, int height, 
                     std::string onnxmodelpath, State& state, int servo_pin) : 
-                    isVideo(isVideo), videopath(videopath), playaudio(playaudio), audiopath(audiopath), width(width), height(height), 
-                    onnxmodelpath(onnxmodelpath), state(state), servo_pin(servo_pin) {};
+                    initialThreshold(initialThreshold), isVideo(isVideo), videopath(videopath), playaudio(playaudio), audiopath(audiopath), 
+                    width(width), height(height), onnxmodelpath(onnxmodelpath), state(state), servo_pin(servo_pin) {};
 
     void videoProcessing() {
         Logger::getLogger()->info("开始视频处理...");
@@ -38,8 +40,6 @@ public:
             return;
         }
 
-        // 初始化舵机控制器
-        ServoController servoController(gpio, servo_pin);
         // 初始化边线检测器
         LineDetector lineDetector(width, height);
         // 初始化赛道检测器
@@ -52,8 +52,10 @@ public:
         CrosswalkDetector crosswalkDetector(width, height);
         // 初始化蓝色挡板检测器
         BlueBoardDetector blueboardDetector(width, height);
-
-        int threshold = 160;
+        // 初始化锥桶检测器
+        ConeDetector coneDetector(width, height);
+        // 初始化阈值
+        int threshold = initialThreshold;
 
         while (cap.isOpened() && isRunning.load()) {
             cv::Mat frame;
@@ -77,17 +79,27 @@ public:
             cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
             Logger::getLogger()->showMat("binary", binary);
 
-            // 检测斑马线, 只检测一次
-            if (!state.has_crosswalk.load()) {
-                if (crosswalkDetector.hasCrosswalk(&binary)) {
-                    state.has_crosswalk.store(true);
-                    // 检测箭头
-                    int direction = arrowProcessor.detectArrowDirection(&frame);
-                    Logger::getLogger()->info("检测到箭头，方向为: " + directions.at(direction));
-                    if (playaudio == true) {
-                        system(("aplay " + audiopath).data());
-                    }
-                    servoController.changeLane(direction, width);
+            // // 检测斑马线, 只检测一次
+            // if (!state.has_crosswalk.load()) {
+            //     if (crosswalkDetector.hasCrosswalk(&binary)) {
+            //         state.has_crosswalk.store(true);
+            //         // 检测箭头
+            //         int direct = arrowProcessor.detectArrowDirection(&frame);
+            //         Logger::getLogger()->info("检测到箭头，方向为: " + directions.at(direct));
+            //         if (playaudio == true) {
+            //             system(("aplay " + audiopath).data());
+            //         }
+            //         direction.store(direct);
+            //         mode.store(1);
+            //     }
+            // }
+
+            // TODO: 检测锥桶
+            if (!detectedCone.load()) {
+                if (coneDetector.hasCone(&frame)) {
+                    Logger::getLogger()->info("检测到锥桶");
+                    detectedCone.store(true);
+                    mode.store(2);
                 }
             }
 
@@ -113,12 +125,12 @@ public:
                 cv::line(frame, lane.left_line.center + cv::Point2f(0, roi_start), lane.left_line.center + cv::Point2f(0, roi_start), cv::Scalar(0, 255, 0), 2);
                 cv::circle(frame, lane.center + cv::Point2f(0, roi_start), 5, cv::Scalar(0, 255, 0), -1);
                 // 舵机控制
-                servoController.setAngle(lane.center.x, width);
+                lane_center.store(lane.center.x);
             }
             else {
-                servoController.setAngle(width / 2, width);
+                lane_center.store(width / 2.0);
             }
-            
+
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
             double fps = 1.0 / time_span.count();
@@ -137,7 +149,7 @@ public:
     };
 
 private:
-    // GPIOHandler& gpio;
+    int initialThreshold;
     State& state;
     bool isVideo;
     std::string videopath;

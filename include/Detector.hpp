@@ -248,7 +248,14 @@ private:
 class BlueBoardDetector {
 public:
 	BlueBoardDetector(int width, int height) : width(width), height(height) {};
+
 	bool hasBlueBoard(cv::Mat* frame) const {
+		/*
+		蓝色HSV范围
+		H: 90, 125
+		S: 130, 255
+		V: 150, 255
+		*/
 		cv::Scalar upperblue = cv::Scalar(125, 255, 255);
 		cv::Scalar lowerblue = cv::Scalar(90, 130, 150);
 
@@ -263,6 +270,48 @@ public:
 
 		double blue_area = cv::countNonZero(blue_mask);
 		return blue_area > width * height / 1.5;
+	};
+
+private:
+	int width;
+	int height;
+};
+
+
+// ConeDetector: 负责锥桶检测
+class ConeDetector {
+public:
+	ConeDetector(int width, int height) : width(width), height(height) {};
+
+	bool hasCone(cv::Mat* frame) const {
+		bool has_cone = false;
+		cv::Scalar upperblue = cv::Scalar(125, 255, 255);
+		cv::Scalar lowerblue = cv::Scalar(90, 130, 150);
+
+		cv::Mat ROI;
+		cv::Rect rect = cv::Rect(0, height / 2.0, width, height / 2.0);
+		ROI = (*frame)(rect);
+
+		cv::Mat hsv_frame;
+		cv::cvtColor(ROI, hsv_frame, cv::COLOR_BGR2HSV);
+
+		cv::Mat blue_mask;
+		cv::inRange(hsv_frame, lowerblue, upperblue, blue_mask);
+
+		std::vector<std::vector<cv::Point>> contours;
+		cv::findContours(blue_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+		for (const auto& contour : contours) {
+			double area = cv::contourArea(contour);
+			cv::Mat approxCurve;
+			cv::approxPolyDP(contour, approxCurve, 0.2 * cv::arcLength(contour, true), true);
+			if (area > width * height / 300.0 && approxCurve.rows == 3) {
+				Logger::getLogger()->info(std::to_string(area));
+				cv::polylines(ROI, approxCurve, true, cv::Scalar(255, 0, 0), 2);
+				has_cone = true;
+			}
+		}
+		return has_cone;
 	};
 
 private:

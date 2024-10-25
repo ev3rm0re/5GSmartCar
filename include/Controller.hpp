@@ -7,7 +7,9 @@
 
 #include "Logger.hpp"
 
-extern std::atomic<bool> isRunning, cameraOpened; // 引入全局变量
+extern std::atomic<bool> isRunning, cameraOpened, detectedCone; // 引入全局变量
+extern std::atomic<int> mode, direction;
+extern std::atomic<double> lane_center;
 
 // GPIOHandler: 负责 GPIO 操作
 class GPIOHandler {
@@ -47,9 +49,10 @@ public:
 };
 
 
+// ServoController: 舵机控制器
 class ServoController {
 public:
-    ServoController(GPIOHandler& gpio, int servo_pin) : gpio(gpio), servo_pin(servo_pin) {
+    ServoController(GPIOHandler& gpio, int servo_pin, int width) : gpio(gpio), servo_pin(servo_pin), width(width) {
         initializeServo();
         Logger::getLogger()->info("ServoController 初始化成功");
     }
@@ -65,56 +68,84 @@ public:
         return 2.5 + (angle / 180.0) * 10.0;
     }
 
-    void setAngle(double center, int width) {
-        error = center - width / 2.0;
-        double error_angle = kp * error + kd * (error - last_error);
+    void setAngle(int width) {
+        while (isRunning.load()) {
+            if (mode.load() == 0) {
+                error = lane_center.load() - width / 2.0;
+                double error_angle = kp * error + kd * (error - last_error);
 
-        if (error_angle > angle_outmax) {
-            error_angle = angle_outmax;
-        } else if (error_angle < angle_outmin) {
-            error_angle = angle_outmin;
+                if (error_angle > angle_outmax) {
+                    error_angle = angle_outmax;
+                } else if (error_angle < angle_outmin) {
+                    error_angle = angle_outmin;
+                }
+
+                double angle = 100 - error_angle;
+
+                last_error = error;
+                gpio.setPWM(servo_pin, angleToDutyCycle(angle));
+                gpio.setDelay(2000);
+                gpio.setPWM(servo_pin, angleToDutyCycle(angle));
+            }
+            else if (mode.load() == 1) {
+                double first_angle, second_angle;
+                if (direction.load() == 0) {
+                    Logger::getLogger()->info("左变道...");
+                    first_angle = 130;
+                    second_angle = 70;
+                } else if (direction.load() == 1) {
+                    Logger::getLogger()->info("右变道...");
+                    first_angle = 70;
+                    second_angle = 130;
+                }
+                gpio.setPWM(servo_pin, angleToDutyCycle(first_angle)); // 舵机转到第一个角度
+                gpio.setDelay(2000 * 1000);
+                gpio.setPWM(servo_pin, angleToDutyCycle(100)); // 舵机归位
+                gpio.setDelay(500 * 1000);
+                gpio.setPWM(servo_pin, angleToDutyCycle(second_angle)); // 舵机转到第二个角度
+                gpio.setDelay(500 * 1000);
+                mode.store(0);
+            }
+            else if (mode.load() == 2) {
+                Logger::getLogger()->info("绕行锥桶...");
+                if (cone_count % 2 == 0) {
+                    gpio.setPWM(servo_pin, angleToDutyCycle(120));
+                    gpio.setDelay(300 * 1000);
+                    gpio.setPWM(servo_pin, angleToDutyCycle(80));
+                    gpio.setDelay(500 * 1000);
+                    gpio.setPWM(servo_pin, angleToDutyCycle(105));
+                    gpio.setDelay(300 * 1000);
+                    gpio.setPWM(servo_pin, angleToDutyCycle(100));
+                    gpio.setDelay(300 * 1000);
+                    cone_count++;
+                } else {
+                    gpio.setPWM(servo_pin, angleToDutyCycle(80));
+                    gpio.setDelay(300 * 1000);
+                    gpio.setPWM(servo_pin, angleToDutyCycle(120));
+                    gpio.setDelay(500 * 1000);
+                    gpio.setPWM(servo_pin, angleToDutyCycle(105));
+                    gpio.setDelay(300 * 1000);
+                    gpio.setPWM(servo_pin, angleToDutyCycle(100));
+                    gpio.setDelay(300 * 1000);
+                    cone_count++;
+                }
+                detectedCone.store(false);
+                mode.store(0);
+            }
         }
-
-        double angle = 100 - error_angle;
-
-        last_error = error;
-        gpio.setPWM(servo_pin, angleToDutyCycle(angle));
-        gpio.setDelay(2000);
-        gpio.setPWM(servo_pin, angleToDutyCycle(angle));
     }
-
-    // 变道
-    void changeLane(int direction, int width) {
-        double first_angle, second_angle;
-        if (direction == 0) {
-            Logger::getLogger()->info("左变道...");
-            first_angle = 130;
-            second_angle = 70;
-        } else if (direction == 1) {
-            Logger::getLogger()->info("右变道...");
-            first_angle = 70;
-            second_angle = 130;
-        }
-        gpio.setPWM(servo_pin, angleToDutyCycle(first_angle));
-        gpio.setDelay(2000 * 1000);
-        gpio.setPWM(servo_pin, angleToDutyCycle(100));
-        gpio.setDelay(500 * 1000);
-        gpio.setPWM(servo_pin, angleToDutyCycle(second_angle));
-        gpio.setDelay(500 * 1000);
-    }
-
-
 
 private:
     void initializeServo() {
         gpio.setMode(servo_pin, PI_OUTPUT);
         gpio.setPWMfrequency(servo_pin, 50);
         gpio.setPWMrange(servo_pin, 100);
-        gpio.setPWM(servo_pin, angleToDutyCycle(70));
-        gpio.setDelay(1500 * 1000);
-        gpio.setPWM(servo_pin, angleToDutyCycle(130));
-        gpio.setDelay(1500 * 1000);
+        // gpio.setPWM(servo_pin, angleToDutyCycle(70));
+        // gpio.setDelay(1500 * 1000);
+        // gpio.setPWM(servo_pin, angleToDutyCycle(130));
+        // gpio.setDelay(1500 * 1000);
         gpio.setPWM(servo_pin, angleToDutyCycle(100));
+        gpio.setDelay(1500 * 1000);
     }
 
     GPIOHandler& gpio;
@@ -125,9 +156,12 @@ private:
     double kd = 0.11;
     double angle_outmax = 45.0;
     double angle_outmin = -45.0;
+    int width;
+    int cone_count = 0;
 };
 
 
+// MotorController: 电机控制器
 class MotorController {
 public:
     MotorController(GPIOHandler& gpio, int motor_pin, int init_pwm, int target_pwm) : gpio(gpio), motor_pin(motor_pin), init_pwm(init_pwm), target_pwm(target_pwm) {
@@ -141,7 +175,6 @@ public:
     }
 
     void moveForward(State& state) {
-        sleep(2);
         int i = init_pwm;
         bool detected_crosswalk = false;
         while (true && isRunning.load()) {
@@ -149,13 +182,13 @@ public:
                 usleep(1000);
                 continue;
             }
-            if (state.has_blueboard.load()) {
+            if (state.has_blueboard.load()) { // 蓝板停车
                 i = init_pwm;
                 gpio.setPWM(motor_pin, i);
                 gpio.setDelay(200);
                 continue;
             }
-            if (state.has_crosswalk.load() && !detected_crosswalk) {
+            if (state.has_crosswalk.load() && !detected_crosswalk) { // 人行横道停车
                 i = init_pwm;
                 gpio.setPWM(motor_pin, i);
                 gpio.setDelay(200 * 1000);
@@ -165,7 +198,7 @@ public:
                 gpio.setDelay(4000 * 1000);
                 detected_crosswalk = true;
             }
-            if (i < target_pwm) {
+            if (i < target_pwm) { // 加速
                 i += 100;
             }
             gpio.setPWM(motor_pin, i);
@@ -179,7 +212,7 @@ private:
         gpio.setPWMfrequency(motor_pin, 200);
         gpio.setPWMrange(motor_pin, 40000);
         gpio.setPWM(motor_pin, init_pwm);
-        gpio.setDelay(2000 * 1000);
+        gpio.setDelay(200);
     }
 
     GPIOHandler& gpio;
