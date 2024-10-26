@@ -31,28 +31,28 @@ public:
     // 信息日志（绿色字体）
     void info(const std::string& message) {
         if (currentLogLevel <= INFO) {
-            log("\033[32m", "[INFO]", message);  // 绿色
+            log("\033[32m", "[INFO]", message);         // 绿色
         }
     }
 
     // 调试日志（蓝色字体）
     void debug(const std::string& message) {
         if (currentLogLevel <= DEBUG) {
-            log("\033[34m", "[DEBUG]", message);  // 蓝色
+            log("\033[34m", "[DEBUG]", message);        // 蓝色
         }
     }
 
     // 错误日志（红色字体）
     void error(const std::string& message) {
         if (currentLogLevel <= ERROR) {
-            log("\033[31m", "[ERROR]", message);  // 红色
+            log("\033[31m", "[ERROR]", message);        // 红色
         }
     }
 
     // 警告日志（黄色字体）
     void warning(const std::string& message) {
         if (currentLogLevel <= WARNING) {
-            log("\033[33m", "[WARNING]", message);  // 黄色
+            log("\033[33m", "[WARNING]", message);      // 黄色
         }
     }
 
@@ -65,7 +65,7 @@ public:
     }
 
 private:
-    LogLevel currentLogLevel = DEBUG;  // 默认日志级别是DEBUG
+    LogLevel currentLogLevel = DEBUG;                   // 默认日志级别是DEBUG
 
     // 打印日志内容
     void log(const std::string& colorCode, const std::string& level, const std::string& message) {

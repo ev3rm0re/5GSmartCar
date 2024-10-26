@@ -57,24 +57,24 @@ int main() {
     }
 
     /******************************参数获取******************************/
-    // gpio参数
+    // gpio
     int servo_pin = config["gpio"]["servo_pin"].as<int>();
     int motor_pin = config["gpio"]["motor_pin"].as<int>();
     int init_pwm = config["gpio"]["init_pwm"].as<int>();
     int target_pwm = config["gpio"]["target_pwm"].as<int>();
-    // 视频参数
+    // 摄像头
     int initialThreshold = config["initialThreshold"].as<int>();
     int width = config["frame"]["width"].as<int>();
     int height = config["frame"]["height"].as<int>();
-    // 音频路径
+    // 音频
     bool playaudio = config["audio"]["playaudio"].as<bool>();
     std::string audiopath = config["audio"]["audiopath"].as<std::string>();
-    // 检测参数
+    // 检测
     std::string onnxmodelpath = config["linedetect"]["onnxmodelpath"].as<std::string>();
-    // 获取 video 部分的参数
+    // 视频
     bool isvideo = config["video"]["isvideo"].as<bool>();
     std::string videopath = config["video"]["videopath"].as<std::string>();
-    // 移动控制参数
+    // 移动控制
     bool movecontrol = config["movecontrol"].as<bool>();
     // 是否调用录像
     bool recordvideo = config["recordvideo"].as<bool>();
@@ -101,14 +101,15 @@ int main() {
     ServoController servoController(gpio, servo_pin, width);
 
     // 初始化检测线程和移动线程
-    std::thread videoThread(&VideoProcessor::videoProcessing, &videoProcessor);
-    std::thread moveThread;
-    if (movecontrol) moveThread = std::thread(&MotorController::moveForward, &motorController, std::ref(state));
-    std::thread angleThread(&ServoController::setAngle, &servoController, width);
+    std::thread videoThread(&VideoProcessor::videoProcessing, &videoProcessor);                                     // 检测线程
+    std::thread motorThread;
+    if (movecontrol) motorThread = std::thread(&MotorController::moveForward, &motorController, std::ref(state));   // 电机控制线程
+    std::thread servoThread(&ServoController::setAngle, &servoController, width);                                   // 舵机控制线程
+
     // 等待线程结束
     videoThread.join();
-    if (movecontrol) moveThread.join();
-    angleThread.join();
+    if (movecontrol) motorThread.join();
+    servoThread.join();
 
     /******************************结束******************************/
     std::cout << "****************主线程结束****************" << std::endl;

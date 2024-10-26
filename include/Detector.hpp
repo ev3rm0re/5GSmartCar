@@ -38,26 +38,26 @@ public:
             std::vector<bool> toKeep(lines->size(), true);  // 用于标记保留哪些线
 
             for (size_t i = 0; i < lines->size(); ++i) {
-                if (!toKeep[i]) continue;  // 跳过已经删除的线
+                if (!toKeep[i]) continue;  					// 跳过已经删除的线
 
                 for (size_t j = i + 1; j < lines->size(); ++j) {
-                    if (!toKeep[j]) continue;  // 跳过已经删除的线
+                    if (!toKeep[j]) continue;  				// 跳过已经删除的线
 
                     if ((*lines)[i].slope < 0 && (*lines)[j].slope < 0) {
                         // 两条线斜率为负，删除靠近中心的
                         if ((*lines)[i].center.x < (*lines)[j].center.x) {
-                            toKeep[j] = false;  // 标记删除第 j 条
+                            toKeep[j] = false;  			// 标记删除第 j 条
                         } else {
-                            toKeep[i] = false;  // 标记删除第 i 条
-                            break;  // 当前 i 被删除，跳出内循环
+                            toKeep[i] = false;  			// 标记删除第 i 条
+                            break;  						// 当前 i 被删除，跳出内循环
                         }
                     } else if ((*lines)[i].slope > 0 && (*lines)[j].slope > 0) {
                         // 两条线斜率为正，删除靠近中心的
                         if ((*lines)[i].center.x < (*lines)[j].center.x) {
-                            toKeep[i] = false;  // 标记删除第 i 条
-                            break;  // 当前 i 被删除，跳出内循环
+                            toKeep[i] = false;  			// 标记删除第 i 条
+                            break;  						// 当前 i 被删除，跳出内循环
                         } else {
-                            toKeep[j] = false;  // 标记删除第 j 条
+                            toKeep[j] = false;  			// 标记删除第 j 条
                         }
                     }
                 }
@@ -67,7 +67,7 @@ public:
             auto it = lines->begin();
             for (size_t i = 0; i < toKeep.size(); ++i) {
                 if (!toKeep[i]) {
-                    it = lines->erase(it);  // 删除被标记为 false 的线
+                    it = lines->erase(it);  				// 删除被标记为 false 的线
                 } else {
                     ++it;
                 }
@@ -118,6 +118,8 @@ public:
 		    }
         }
     };
+
+	// TODO: Lane筛选
 
 private:
     int width;
