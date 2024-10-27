@@ -12,8 +12,6 @@
 
 
 extern std::atomic<bool> isRunning, cameraOpened;
-extern std::atomic<int> direction, mode, detectedCone;
-extern std::atomic<double> lane_center;
 extern GPIOHandler gpio;
 
 // VideoProcessor: 负责视频处理
@@ -43,6 +41,7 @@ public:
         Logger::getLogger()->info("视频流打开成功");
 
         /******************************初始化检测器******************************/
+        // ServoController servoController(gpio, servo_pin, width);// 初始化舵机控制器
         LineDetector lineDetector(width, height);               // 初始化边线检测器
         LaneDetector laneDetector(width, height);               // 初始化赛道检测器
         BinaryImageProcessor binaryProcessor(width, height);    // 初始化二值化处理器
@@ -50,8 +49,10 @@ public:
         CrosswalkDetector crosswalkDetector(width, height);     // 初始化人行横道检测器
         BlueBoardDetector blueboardDetector(width, height);     // 初始化蓝色挡板检测器
         ConeDetector coneDetector(width, height);               // 初始化锥桶检测器
+        ServoController servoController(gpio, servo_pin, width);// 初始化舵机控制器
         
         int threshold = initialThreshold;                       // 初始化阈值
+        int detectedCone = 0;                                   // 已检测到的锥桶数量
 
         /******************************视频处理循环******************************/
         while (cap.isOpened() && isRunning.load()) {
@@ -70,12 +71,11 @@ public:
             else {
                 state.has_blueboard.store(false);
             }
-            
+
             /******************************取ROI和二值化处理******************************/
-            double roi_start = height / 3.0;
+            double roi_start = height / 2.0;
             cv::Rect ROI = cv::Rect(0, roi_start, width, height - roi_start);
             cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
-            Logger::getLogger()->showMat("binary", binary);
 
             /******************************检测斑马线, 一次******************************/
             if (!state.has_crosswalk.load()) {
@@ -88,15 +88,14 @@ public:
                     if (playaudio == true) {
                         system(("aplay " + audiopath).data());
                     }
-                    direction.store(direct);                // 设置方向
-                    mode.store(1);                          // 设置变道模式
+                    servoController.changeLane(direct);
                 }
             }
 
             /******************************检测锥桶******************************/
-            if (detectedCone.load() < 4) {                  // 绕行锥桶三次后就不再检测, 提高运行速度
+            if (detectedCone < 4) {                   // 绕行锥桶三次后就不再检测, 提高运行速度
                 if (coneDetector.hasCone(&frame)) {
-                    mode.store(2);                          // 设置绕行模式
+                    servoController.coneDetour(&detectedCone);
                 }
             }
 
@@ -117,12 +116,12 @@ public:
             laneDetector.getLane(lines, &lane);
             // 绘制赛道
             if (lane.width > 0) {
-                cv::line(frame, lane.left_line.center + cv::Point2f(0, roi_start), lane.left_line.center + cv::Point2f(0, roi_start), cv::Scalar(0, 255, 0), 2);
+                cv::line(frame, lane.left_line.center + cv::Point2f(0, roi_start), lane.right_line.center + cv::Point2f(0, roi_start), cv::Scalar(0, 255, 0), 2);
                 cv::circle(frame, lane.center + cv::Point2f(0, roi_start), 5, cv::Scalar(0, 255, 0), -1);
-                lane_center.store(lane.center.x);           // 储存赛道中心
+                servoController.setServoAngle(lane.center.x);           // 储存赛道中心
             }
             else {
-                lane_center.store(width / 2.0);
+                servoController.setServoAngle(width / 2.0);
             }
 
             std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();  // 计时结束

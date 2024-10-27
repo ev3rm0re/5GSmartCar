@@ -85,6 +85,8 @@ class State {
 public:
     std::atomic<bool> has_crosswalk{false};
     std::atomic<bool> has_blueboard{false};
+	std::atomic<int> detectedCone{0};
+	std::atomic<bool> isDetouring{true};
 };
 
 

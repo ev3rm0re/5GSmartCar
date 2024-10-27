@@ -143,6 +143,7 @@ public:
 	    std::vector<std::vector<cv::Point>> contours;
 	    cv::findContours(*binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 	    for (const auto& contour : contours) {
+			if (cv::contourArea(contour) < width * height / 200.0) continue;
 	    	cv::RotatedRect rect = cv::minAreaRect(contour);
 	    	CrossWalk crosswalk(rect);
 	    	if (isCrosswalk(crosswalk)) {
@@ -185,7 +186,7 @@ public:
 	    else if (white_count < width * height / 100 && lines_size == 1) {
 	    	(*threshold)--;
 	    }
-	    else if (white_count > width * height / 15.0) {
+	    else if (white_count > width * height / 20.0) {
 	    	(*threshold)++;
 	    }
 	    if (current_threshold != *threshold) {
@@ -305,10 +306,10 @@ public:
 
 		for (const auto& contour : contours) {
 			double area = cv::contourArea(contour);
+			if (area < width * height / 300.0) continue;
 			cv::Mat approxCurve;
 			cv::approxPolyDP(contour, approxCurve, 0.2 * cv::arcLength(contour, true), true);
 			if (area > width * height / 300.0 && approxCurve.rows == 3) {
-				Logger::getLogger()->info(std::to_string(area));
 				cv::polylines(ROI, approxCurve, true, cv::Scalar(255, 0, 0), 2);
 				has_cone = true;
 			}

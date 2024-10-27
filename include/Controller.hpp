@@ -8,8 +8,6 @@
 #include "Logger.hpp"
 
 extern std::atomic<bool> isRunning, cameraOpened;      // isRunning: 控制程序运行, cameraOpened: 控制电机启动
-extern std::atomic<int> mode, direction, detectedCone; // mode: 0-正常模式, 1-变道模式, 2-绕行模式; direction: 0-左, 1-右; detectedCone: 检测到的锥桶数量
-extern std::atomic<double> lane_center;                // 赛道中心线
 
 // GPIOHandler: 负责 GPIO 操作
 class GPIOHandler {
@@ -68,64 +66,60 @@ public:
         return 2.5 + (angle / 180.0) * 10.0;
     }
 
-    void setAngle(int width) {
-        while (isRunning.load()) {
-            if (mode.load() == 0) {
-                error = lane_center.load() - width / 2.0;
-                double error_angle = kp * error + kd * (error - last_error);
+    void setServoAngle(double center) {
+        error = center - width / 2.0;
+        double error_angle = kp * error + kd * (error - last_error);
 
-                if (error_angle > angle_outmax) {
-                    error_angle = angle_outmax;
-                } else if (error_angle < angle_outmin) {
-                    error_angle = angle_outmin;
-                }
-
-                double angle = 100 - error_angle;
-
-                last_error = error;
-                gpio.setPWM(servo_pin, angleToDutyCycle(angle));
-                gpio.setDelay(2000);
-                gpio.setPWM(servo_pin, angleToDutyCycle(angle));
-            }
-            else if (mode.load() == 1) {                // 变道模式
-                double first_angle, second_angle;
-                if (direction.load() == 0) {
-                    Logger::getLogger()->info("左变道...");
-                    first_angle = 130;
-                    second_angle = 70;
-                } else if (direction.load() == 1) {
-                    Logger::getLogger()->info("右变道...");
-                    first_angle = 70;
-                    second_angle = 130;
-                }
-                gpio.setPWM(servo_pin, angleToDutyCycle(first_angle));      // 舵机转到第一个角度
-                gpio.setDelay(2000 * 1000);
-                gpio.setPWM(servo_pin, angleToDutyCycle(100));              // 舵机归位
-                gpio.setDelay(500 * 1000);
-                gpio.setPWM(servo_pin, angleToDutyCycle(second_angle));     // 舵机转到第二个角度
-                gpio.setDelay(500 * 1000);
-                mode.store(0);
-            }
-            else if (mode.load() == 2) {                // 绕行模式
-                Logger::getLogger()->info("检测到锥桶, 开始绕行...");
-                double first_angle, second_angle;
-                if (detectedCone.load() % 2 == 0) {
-                    first_angle = 120;
-                    second_angle = 80;
-                } else {
-                    first_angle = 80;
-                    second_angle = 120;
-                }
-                gpio.setPWM(servo_pin, angleToDutyCycle(first_angle));  // 舵机转到第一个角度
-                gpio.setDelay(300 * 1000);
-                gpio.setPWM(servo_pin, angleToDutyCycle(second_angle)); // 舵机转到第二个角度
-                gpio.setDelay(500 * 1000);
-                gpio.setPWM(servo_pin, angleToDutyCycle(100));          // 舵机归位
-                gpio.setDelay(300 * 1000);
-                detectedCone.store(detectedCone.load() + 1);
-                mode.store(0);
-            }
+        if (error_angle > angle_outmax) {
+            error_angle = angle_outmax;
+        } else if (error_angle < angle_outmin) {
+            error_angle = angle_outmin;
         }
+
+        double angle = 100 - error_angle;
+
+        last_error = error;
+        gpio.setPWM(servo_pin, angleToDutyCycle(angle));
+        gpio.setDelay(200);
+        gpio.setPWM(servo_pin, angleToDutyCycle(angle));
+    }
+
+    void changeLane(int direction) {
+        double first_angle, second_angle;
+        if (direction == 0) {
+            Logger::getLogger()->info("左变道...");
+            first_angle = 130;
+            second_angle = 70;
+        } else if (direction == 1) {
+            Logger::getLogger()->info("右变道...");
+            first_angle = 70;
+            second_angle = 130;
+        }
+        gpio.setPWM(servo_pin, angleToDutyCycle(first_angle));      // 舵机转到第一个角度
+        gpio.setDelay(2000 * 1000);
+        gpio.setPWM(servo_pin, angleToDutyCycle(100));              // 舵机归位
+        gpio.setDelay(500 * 1000);
+        gpio.setPWM(servo_pin, angleToDutyCycle(second_angle));     // 舵机转到第二个角度
+        gpio.setDelay(500 * 1000);
+    }
+
+    void coneDetour(int* detectedCone) {
+        Logger::getLogger()->info("检测到锥桶, 开始第" + std::to_string(*detectedCone + 1) + "次绕行...");
+        double first_angle, second_angle;
+        if (*detectedCone % 2 == 0) {
+            first_angle = 120;
+            second_angle = 80;
+        } else {
+            first_angle = 80;
+            second_angle = 120;
+        }
+        gpio.setPWM(servo_pin, angleToDutyCycle(first_angle));  // 舵机转到第一个角度
+        gpio.setDelay(500 * 1000);
+        gpio.setPWM(servo_pin, angleToDutyCycle(second_angle)); // 舵机转到第二个角度
+        gpio.setDelay(500 * 1000);
+        gpio.setPWM(servo_pin, angleToDutyCycle(100));          // 舵机归位
+        gpio.setDelay(1000 * 1000);
+        (*detectedCone)++;
     }
 
 private:
@@ -169,7 +163,7 @@ public:
     void moveForward(State& state) {
         int i = init_pwm;
         bool detected_crosswalk = false;
-        while (true && isRunning.load()) {
+        while (isRunning.load()) {
             if (!cameraOpened.load()) {                                 // 摄像头未打开
                 usleep(1000);
                 continue;

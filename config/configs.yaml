@@ -2,13 +2,13 @@ gpio:
   servo_pin: 12
   motor_pin: 13
   init_pwm: 12600
-  target_pwm: 12800
+  target_pwm: 13100
 
 frame:
   width: 300
   height: 200
 
-initialThreshold: 180
+initialThreshold: 200
 
 linedetect:
   onnxmodelpath: "/home/pi/Code/5GSmartCar/models/arrow-yolo11n-cls-v3.onnx"
@@ -25,4 +25,4 @@ movecontrol: false
 
 recordvideo: false
 
-loglevel: "DEBUG"
+loglevel: "INFO"

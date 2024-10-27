@@ -13,8 +13,6 @@
 
 
 std::atomic<bool> isRunning(true), cameraOpened(false);
-std::atomic<int> direction, mode(0), detectedCone(0);
-std::atomic<double> lane_center;
 
 void signalHandler(int signum) { // 信号处理函数
     isRunning = false;
@@ -89,27 +87,20 @@ int main() {
     /******************************控制******************************/
     // 初始化状态
     State state;
-    state.has_crosswalk.store(false);
-    state.has_blueboard.store(false);
-    lane_center.store(width / 2.0);
 
     // 初始化 videoProcessor
     VideoProcessor videoProcessor(initialThreshold, isvideo, videopath, playaudio, audiopath, width, height, onnxmodelpath, state, servo_pin);
     // 初始化 motorController
     MotorController motorController(gpio, motor_pin, init_pwm, target_pwm);
     // 初始化 servoController
-    ServoController servoController(gpio, servo_pin, width);
 
-    // 初始化检测线程和移动线程
     std::thread videoThread(&VideoProcessor::videoProcessing, &videoProcessor);                                     // 检测线程
     std::thread motorThread;
-    if (movecontrol) motorThread = std::thread(&MotorController::moveForward, &motorController, std::ref(state));   // 电机控制线程
-    std::thread servoThread(&ServoController::setAngle, &servoController, width);                                   // 舵机控制线程
+    if (movecontrol) motorThread = std::thread(&MotorController::moveForward, &motorController, std::ref(state));   // 电机控制线程                                  // 舵机控制线程
 
     // 等待线程结束
     videoThread.join();
     if (movecontrol) motorThread.join();
-    servoThread.join();
 
     /******************************结束******************************/
     std::cout << "****************主线程结束****************" << std::endl;
