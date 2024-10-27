@@ -54,18 +54,18 @@ void ServoController::coneDetour(int* detectedCone) {
     Logger::getLogger()->info("检测到锥桶, 开始第" + std::to_string(*detectedCone + 1) + "次绕行...");
     double first_angle, second_angle;
     if (*detectedCone % 2 == 0) {
-        first_angle = 115;
-        second_angle = 85;
+        first_angle = 130;
+        second_angle = 55;
     } else {
-        first_angle = 85;
-        second_angle = 115;
+        first_angle = 70;
+        second_angle = 145;
     }
     gpio.setPWM(servo_pin, angleToDutyCycle(first_angle));  // 舵机转到第一个角度
-    gpio.setDelay(500 * 1000);
+    gpio.setDelay(300 * 1000);
     gpio.setPWM(servo_pin, angleToDutyCycle(second_angle)); // 舵机转到第二个角度
-    gpio.setDelay(500 * 1000);
+    gpio.setDelay(300 * 1000);
     gpio.setPWM(servo_pin, angleToDutyCycle(100));          // 舵机归位
-    gpio.setDelay(1000 * 1000);
+    gpio.setDelay(300 * 1000);
     (*detectedCone)++;
 }
 
@@ -98,7 +98,7 @@ void MotorController::moveForward(State& state) {
             i = init_pwm;
             gpio.setPWM(motor_pin, i);
             gpio.setDelay(200 * 1000);
-            gpio.setPWM(motor_pin, i - 500);
+            gpio.setPWM(motor_pin, i - 300);
             gpio.setDelay(800 * 1000);
             gpio.setPWM(motor_pin, i);
             gpio.setDelay(4000 * 1000);

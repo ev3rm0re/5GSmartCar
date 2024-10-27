@@ -2,7 +2,7 @@ gpio:
   servo_pin: 12
   motor_pin: 13
   init_pwm: 12600
-  target_pwm: 13100
+  target_pwm: 12800
 
 frame:
   width: 300
@@ -21,7 +21,7 @@ audio:
   playaudio: false
   audiopath: "/home/pi/Code/5GSmartCar/medias/sunshangxiang.wav"
 
-movecontrol: false
+movecontrol: true
 
 recordvideo: false
 

@@ -4,19 +4,14 @@
 void VideoProcessor::videoProcessing() {
     Logger::getLogger()->info("开始视频处理...");
     /******************************打开摄像头或视频******************************/
-    RealTimeVideoCapture cap;
+    RealTimeVideoCapture recap;
     if (isVideo) {
-        std::string video_path = videopath;
-        cap.open(video_path);
+        recap.open(videopath);
     }
     else {
-        cap.open("/dev/cam0");
+        recap.open("/dev/cam0");
     }
-    // if (!cap.isOpened()) {
-    //     Logger::getLogger()->error("视频流打开失败");
-    //     return;
-    // }
-    // cap.set(cv::CAP_PROP_BUFFERSIZE, 1);                    // 设置缓冲区大小为1
+
     Logger::getLogger()->info("视频流打开成功");
     /******************************初始化检测器******************************/
     ServoController servoController(gpio, servo_pin, width);// 初始化舵机控制器
@@ -34,7 +29,7 @@ void VideoProcessor::videoProcessing() {
     while (isRunning.load()) {
         cv::Mat frame;
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();  // 计时开始
-        if (!cap.read(frame)) {                             // 读取视频帧，失败则跳过这一帧
+        if (!recap.read(frame)) {                             // 读取视频帧，失败则跳过这一帧
             continue;
         }
         cv::resize(frame, frame, cv::Size(width, height));
