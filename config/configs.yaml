@@ -2,7 +2,7 @@ gpio:
   servo_pin: 12
   motor_pin: 13
   init_pwm: 12600
-  target_pwm: 12800
+  target_pwm: 13000
 
 frame:
   width: 300

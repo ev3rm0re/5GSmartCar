@@ -208,7 +208,7 @@ bool BlueBoardDetector::hasBlueBoard(cv::Mat* frame) const {
 
 
 /******************************锥桶检测器实现******************************/
-bool ConeDetector::hasCone(cv::Mat* frame) const {
+bool ConeDetector::hasCone(cv::Mat* frame, double* center) const {
 	bool has_cone = false;
 	cv::Scalar upperblue = cv::Scalar(125, 255, 255);
 	cv::Scalar lowerblue = cv::Scalar(90, 130, 150);
@@ -229,9 +229,12 @@ bool ConeDetector::hasCone(cv::Mat* frame) const {
 		if (area < width * height / 300.0) continue;
 		cv::Mat approxCurve;
 		cv::approxPolyDP(contour, approxCurve, 0.2 * cv::arcLength(contour, true), true);
-		if (area > width * height / 200.0 && approxCurve.rows == 3) {
+		if (approxCurve.rows == 3) {
 			cv::polylines(ROI, approxCurve, true, cv::Scalar(255, 0, 0), 2);
-			cv::putText(ROI, std::to_string(area), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 0, 0), 2);
+            cv::Moments M = cv::moments(approxCurve);
+            if (M.m00 != 0) {
+                *center = cv::Point(M.m10 / M.m00, M.m01 / M.m00).x;
+            }
 			has_cone = true;
 		}
 	}

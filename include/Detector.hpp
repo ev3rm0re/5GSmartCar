@@ -90,7 +90,7 @@ private:
 class ConeDetector {
 public:
 	ConeDetector(int width, int height) : width(width), height(height) {};
-	bool hasCone(cv::Mat* frame) const;
+	bool hasCone(cv::Mat* frame, double* center) const;
 
 private:
 	int width;

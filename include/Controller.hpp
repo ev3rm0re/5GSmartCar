@@ -56,7 +56,7 @@ public:
     double angleToDutyCycle(double angle);
     void setServoAngle(double center);
     void changeLane(int direction);
-    void coneDetour(int* detectedCone);
+    void coneDetour(int* detectedCone, double coneCenter);
 
 private:
     void initializeServo() {    // 初始化舵机

@@ -61,9 +61,10 @@ void VideoProcessor::videoProcessing() {
             }
         }
         /******************************检测锥桶******************************/
-        if (detectedCone < 4) {                   // 绕行锥桶三次后就不再检测, 提高运行速度
-            if (coneDetector.hasCone(&frame)) {
-                servoController.coneDetour(&detectedCone);
+        if (detectedCone < 3) {                   // 绕行锥桶三次后就不再检测, 提高运行速度
+            double coneCenter;
+            if (coneDetector.hasCone(&frame, &coneCenter)) {
+                servoController.coneDetour(&detectedCone, coneCenter);
                 continue;
             }
         }
