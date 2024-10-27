@@ -35,7 +35,6 @@ void VideoProcessor::videoProcessing() {
         cv::Mat frame;
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();  // 计时开始
         if (!cap.read(frame)) {
-            Logger::getLogger()->error("该帧读取失败, 跳过");
             continue;
         }
         cv::resize(frame, frame, cv::Size(width, height));
