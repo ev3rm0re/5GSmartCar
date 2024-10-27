@@ -34,7 +34,7 @@ void VideoProcessor::videoProcessing() {
     while (isRunning.load()) {
         cv::Mat frame;
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();  // 计时开始
-        if (!cap.read(frame)) {
+        if (!cap.read(frame)) {                             // 读取视频帧，失败则跳过这一帧
             continue;
         }
         cv::resize(frame, frame, cv::Size(width, height));
