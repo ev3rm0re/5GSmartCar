@@ -53,12 +53,15 @@ void ServoController::changeLane(int direction) {
 void ServoController::coneDetour(int* detectedCone, double coneCenter) {
     Logger::getLogger()->info("检测到锥桶, 开始第" + std::to_string(*detectedCone + 1) + "次绕行...");
     double first_angle, second_angle;
+    int delay = 600 * 1000;
     if (*detectedCone % 2 == 0) {
         if (coneCenter < width / 4.0) {
             first_angle = 90;
+            delay = 400 * 1000;
             second_angle = 115;
         } else if (coneCenter > width * 3 / 4.0) {
             first_angle = 55;
+            delay = 700 * 1000;
             second_angle = 145;
         } else {
             first_angle = 80;
@@ -67,25 +70,29 @@ void ServoController::coneDetour(int* detectedCone, double coneCenter) {
     } else {
         if (coneCenter < width / 4.0) {
             first_angle = 145;
+            delay = 700 * 1000;
             second_angle = 55;
         } else if (coneCenter > width * 3 / 4.0) {
             first_angle = 110;
+            delay = 400 * 1000;
             second_angle = 85;
         } else {
             first_angle = 120;
             second_angle = 75;
         }
     }
-    Logger::getLogger()->info("第" + std::to_string(*detectedCone + 1) + "次绕行角度: " + std::to_string(first_angle) + " -> " + std::to_string(second_angle));
+    Logger::getLogger()->info("第" + std::to_string(*detectedCone + 1) + "次绕行角度: " + 
+                            std::to_string(first_angle) + " -> " + std::to_string(second_angle));
     gpio.setPWM(servo_pin, angleToDutyCycle(first_angle));  // 舵机转到第一个角度
-    gpio.setDelay(500 * 1000);
+    gpio.setDelay(delay);
     gpio.setPWM(servo_pin, angleToDutyCycle(second_angle)); // 舵机转到第二个角度
-    gpio.setDelay(600 * 1000);
+    gpio.setDelay(delay + 100 * 1000);
     (*detectedCone)++;
 }
 
 
-MotorController::MotorController(GPIOHandler& gpio, int motor_pin, int init_pwm, int target_pwm) : gpio(gpio), motor_pin(motor_pin), init_pwm(init_pwm), target_pwm(target_pwm) {
+MotorController::MotorController(GPIOHandler& gpio, int motor_pin, int init_pwm, int target_pwm) : 
+                                gpio(gpio), motor_pin(motor_pin), init_pwm(init_pwm), target_pwm(target_pwm) {
     MotorController::initializeMotor();
     Logger::getLogger()->info("MotorController 初始化成功");
 }
