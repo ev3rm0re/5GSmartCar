@@ -25,7 +25,7 @@ void ServoController::setServoAngle(double center) {
         error_angle = angle_outmin;
     }
     double angle = 100 - error_angle;
-    // Logger::getLogger()->debug("偏差: " + std::to_string(error) + ", 角度: " + std::to_string(angle));
+    Logger::getLogger()->debug("中心偏差: " + std::to_string(error) + ", 舵机角度: " + std::to_string(angle));
     last_error = error;
     gpio->setPWM(servo_pin, angleToDutyCycle(angle));
     gpio->setDelay(200);
@@ -56,6 +56,7 @@ void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane
     double detourCenter;
     if (*detectedCone % 2 == 0) {   // 第一、三个锥桶右侧绕行
         detourCenter = (coneCenter + lane.right_line.center.x) / 2.0;
+        Logger::getLogger()->debug("detourCenter: " + std::to_string(detourCenter));
         setServoAngle(detourCenter);   // 舵机转向右侧车道中心
         gpio->setDelay(400 * 1000);
         setServoAngle(width - detourCenter);                                   // 舵机归位
@@ -63,6 +64,7 @@ void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane
     }
     else {                          // 第二个锥桶左侧绕行
         detourCenter = (coneCenter + lane.left_line.center.x) / 2.0;
+        Logger::getLogger()->debug("detourCenter: " + std::to_string(detourCenter));
         setServoAngle(detourCenter);    // 舵机转向左侧车道中心
         gpio->setDelay(400 * 1000);
         setServoAngle(width - detourCenter);                                   // 舵机归位
