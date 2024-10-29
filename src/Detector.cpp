@@ -101,7 +101,6 @@ void LaneDetector::getLane(std::vector<Line>& lines, Lane* lane) const {
 /******************************人行横道检测器实现******************************/
 bool CrosswalkDetector::isCrosswalk(CrossWalk& crosswalk) const {
     return std::abs(crosswalk.slope) > 0.5 && 
-	        crosswalk.area > width * height / 120.0 && 
 	        crosswalk.height / crosswalk.width < 3.0 && crosswalk.height / crosswalk.width > 0.1;
 }
 

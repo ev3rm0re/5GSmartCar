@@ -1,5 +1,11 @@
 #include "VideoProcessor.hpp"
 
+std::chrono::high_resolution_clock::time_point timeCount(std::chrono::high_resolution_clock::time_point t1, std::string message) {
+    std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(now - t1);
+    Logger::getLogger()->info(message + " " + std::to_string(time_span.count() * 1000) + "ms");
+    return now;
+}
 
 void VideoProcessor::videoProcessing() {
     Logger::getLogger()->info("开始视频处理...");
@@ -43,7 +49,7 @@ void VideoProcessor::videoProcessing() {
         else {
             state.has_blueboard.store(false);
         }
-
+        // std::chrono::high_resolution_clock::time_point t2 = timeCount(t1, "检测蓝色挡板");
         /******************************取ROI和二值化处理******************************/
         double roi_start = height / 2.0;
         cv::Rect ROI = cv::Rect(0, roi_start, width, height - roi_start);
@@ -64,7 +70,7 @@ void VideoProcessor::videoProcessing() {
                 servoController.changeLane(direct);
             }
         }
-
+        // std::chrono::high_resolution_clock::time_point t3 = timeCount(t2, "检测斑马线");
         /******************************检测边线******************************/
         std::vector<Line> lines = lineDetector.detectLines(&binary);
         lineDetector.filterLines(&lines);
@@ -90,7 +96,7 @@ void VideoProcessor::videoProcessing() {
         else {
             laneCenter = width / 2.0;
         }
-
+        // std::chrono::high_resolution_clock::time_point t4 = timeCount(t3, "检测赛道");
         /******************************检测锥桶******************************/
         if (detectedCone < 3) {                     // 绕行锥桶三次后就不再检测, 提高运行速度
             double coneCenter;
@@ -98,10 +104,10 @@ void VideoProcessor::videoProcessing() {
                 servoController.coneDetour(&detectedCone, coneCenter, lane);
             }
         }
-
+        // std::chrono::high_resolution_clock::time_point t5 = timeCount(t4, "检测锥桶");
         /******************************计算FPS******************************/
-        std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();  // 计时结束
-        std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+        std::chrono::high_resolution_clock::time_point t6 = std::chrono::high_resolution_clock::now();  // 计时结束
+        std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t6 - t1);
         double fps = 1.0 / time_span.count();
         cv::putText(frame, "FPS: " + std::to_string(fps), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
 
