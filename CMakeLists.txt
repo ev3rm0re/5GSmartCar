@@ -3,7 +3,7 @@ project(CarControl LANGUAGES CXX)
 
 add_definitions(-Wno-psabi)
 
-set(CMAKE_CXX_FLAGS "${CAMKE_CXX_FLAGS} -std=c++11 -pthread")
+set(CMAKE_CXX_FLAGS "${CAMKE_CXX_FLAGS} -std=c++17 -pthread")
 
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)

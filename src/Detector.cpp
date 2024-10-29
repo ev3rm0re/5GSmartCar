@@ -59,15 +59,16 @@ void LineDetector::filterLines(std::vector<Line>* lines) const {
     }
 
     if (lines->size() == 1) {
-        if ((*lines)[0].center.x < width / 2.0) {
-    		cv::Point newCenter = cv::Point(width, (*lines)[0].center.y);
-    		cv::Point newTop = cv::Point(width + (*lines)[0].center.y / (*lines)[0].slope, 0);
+        double line_centerx = (*lines)[0].center.x;
+        if (line_centerx < width / 2.0) {
+    		cv::Point newCenter = cv::Point(width + line_centerx, (*lines)[0].center.y);
+    		cv::Point newTop = cv::Point(width + (*lines)[0].center.y / (*lines)[0].slope + line_centerx, 0);
     		Line newLine(std::vector<cv::Point>{newTop, newCenter});
     		newLine.center = newCenter;
     		lines->push_back(newLine);
     	} else {
-    		cv::Point newCenter = cv::Point(0, (*lines)[0].center.y);
-    		cv::Point newTop = cv::Point(0 + (*lines)[0].center.y / (*lines)[0].slope, 0);
+    		cv::Point newCenter = cv::Point(line_centerx - width, (*lines)[0].center.y);
+    		cv::Point newTop = cv::Point(line_centerx + (*lines)[0].center.y / (*lines)[0].slope - width, 0);
     		Line newLine(std::vector<cv::Point>{newTop, newCenter});
     		newLine.center = newCenter;
     		lines->push_back(newLine);
@@ -99,7 +100,7 @@ void LaneDetector::getLane(std::vector<Line>& lines, Lane* lane) const {
 
 /******************************人行横道检测器实现******************************/
 bool CrosswalkDetector::isCrosswalk(CrossWalk& crosswalk) const {
-    return std::abs(crosswalk.slope) > 0.8 && 
+    return std::abs(crosswalk.slope) > 0.5 && 
 	        crosswalk.area > width * height / 120.0 && 
 	        crosswalk.height / crosswalk.width < 3.0 && crosswalk.height / crosswalk.width > 0.1;
 }
@@ -111,7 +112,7 @@ bool CrosswalkDetector::hasCrosswalk(cv::Mat* binary) const {
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(*binary, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
     for (const auto& contour : contours) {
-		if (cv::contourArea(contour) < width * height / 200.0) continue;
+		if (cv::contourArea(contour) < width * height / 120.0) continue;
     	cv::RotatedRect rect = cv::minAreaRect(contour);
     	CrossWalk crosswalk(rect);
     	if (isCrosswalk(crosswalk)) {
@@ -194,8 +195,8 @@ bool BlueBoardDetector::hasBlueBoard(cv::Mat* frame) const {
 	S: 130, 255
 	V: 150, 255
 	*/
-	cv::Scalar upperblue = cv::Scalar(125, 255, 255);
-	cv::Scalar lowerblue = cv::Scalar(90, 130, 150);
+	cv::Scalar upperblue = cv::Scalar(130, 255, 255);
+	cv::Scalar lowerblue = cv::Scalar(80, 30, 150);
 	cv::Mat hsv_frame;
 	cv::cvtColor(*frame, hsv_frame, cv::COLOR_BGR2HSV);
 	cv::Mat blue_mask;
@@ -208,10 +209,10 @@ bool BlueBoardDetector::hasBlueBoard(cv::Mat* frame) const {
 
 
 /******************************锥桶检测器实现******************************/
-bool ConeDetector::hasCone(cv::Mat* frame, double* center) const {
+bool ConeDetector::hasCone(cv::Mat* frame, double* coneCenter) const {
 	bool has_cone = false;
-	cv::Scalar upperblue = cv::Scalar(125, 255, 255);
-	cv::Scalar lowerblue = cv::Scalar(90, 130, 150);
+	cv::Scalar upperblue = cv::Scalar(100, 255, 255);
+	cv::Scalar lowerblue = cv::Scalar(70, 0, 240);
 
 	cv::Mat ROI;
 	cv::Rect rect = cv::Rect(0, height / 2.0, width, height / 2.0);
@@ -221,19 +222,20 @@ bool ConeDetector::hasCone(cv::Mat* frame, double* center) const {
 	cv::cvtColor(ROI, hsv_frame, cv::COLOR_BGR2HSV);
 	cv::Mat blue_mask;
 	cv::inRange(hsv_frame, lowerblue, upperblue, blue_mask);
+    Logger::getLogger()->showMat("blue_mask", blue_mask);
     
 	std::vector<std::vector<cv::Point>> contours;
 	cv::findContours(blue_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 	for (const auto& contour : contours) {
 		double area = cv::contourArea(contour);
-		if (area < width * height / 300.0) continue;
+		if (area < width * height / 400.0) continue;
 		cv::Mat approxCurve;
 		cv::approxPolyDP(contour, approxCurve, 0.2 * cv::arcLength(contour, true), true);
 		if (approxCurve.rows == 3) {
 			cv::polylines(ROI, approxCurve, true, cv::Scalar(255, 0, 0), 2);
             cv::Moments M = cv::moments(approxCurve);
             if (M.m00 != 0) {
-                *center = cv::Point(M.m10 / M.m00, M.m01 / M.m00).x;
+                *coneCenter = cv::Point(M.m10 / M.m00, M.m01 / M.m00).x;
             }
 			has_cone = true;
 		}

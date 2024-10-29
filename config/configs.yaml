@@ -15,7 +15,7 @@ linedetect:
 
 video:
   isvideo: false
-  videopath: "/home/pi/Code/5GSmartCar/medias/crosswalk.mp4"
+  videopath: "/home/pi/Code/5GSmartCar/medias/playground2.avi"
 
 audio:
   playaudio: false

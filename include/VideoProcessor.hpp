@@ -18,14 +18,15 @@ extern GPIOHandler gpio;
 // VideoProcessor: 负责视频处理
 class VideoProcessor {
 public:
-    VideoProcessor(int initialThreshold, bool isVideo, std::string videopath, bool playaudio, std::string audiopath, int width, int height, 
+    VideoProcessor(ServoController& servoController, int initialThreshold, bool isVideo, std::string videopath, bool playaudio, std::string audiopath, int width, int height, 
                     std::string onnxmodelpath, State& state, int servo_pin) : 
-                    initialThreshold(initialThreshold), isVideo(isVideo), videopath(videopath), playaudio(playaudio), audiopath(audiopath), 
-                    width(width), height(height), onnxmodelpath(onnxmodelpath), state(state), servo_pin(servo_pin) {};
+                    servoController(servoController), initialThreshold(initialThreshold), isVideo(isVideo), videopath(videopath), playaudio(playaudio), 
+                    audiopath(audiopath), width(width), height(height), onnxmodelpath(onnxmodelpath), state(state), servo_pin(servo_pin) {};
 
     void videoProcessing();
 
 private:
+    ServoController& servoController;
     int initialThreshold;
     State& state;
     bool isVideo;

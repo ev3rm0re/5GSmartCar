@@ -1,13 +1,12 @@
 #include "Controller.hpp"
 
-ServoController::ServoController(GPIOHandler& gpio, int servo_pin, int width) : gpio(gpio), servo_pin(servo_pin), width(width) {
+ServoController::ServoController(GPIOHandler* gpio, int servo_pin, int width) : gpio(gpio), servo_pin(servo_pin), width(width) {
     ServoController::initializeServo();
     Logger::getLogger()->info("ServoController 初始化成功");
 }
 
-ServoController::~ServoController() {
-    gpio.setPWM(servo_pin, angleToDutyCycle(100));
-    gpio.setDelay(500 * 1000);
+void ServoController::reset() {
+    gpio->setPWM(servo_pin, angleToDutyCycle(100));
     Logger::getLogger()->info("舵机归位, ServoController 销毁成功");
 }
 
@@ -26,9 +25,9 @@ void ServoController::setServoAngle(double center) {
     }
     double angle = 100 - error_angle;
     last_error = error;
-    gpio.setPWM(servo_pin, angleToDutyCycle(angle));
-    gpio.setDelay(200);
-    gpio.setPWM(servo_pin, angleToDutyCycle(angle));
+    gpio->setPWM(servo_pin, angleToDutyCycle(angle));
+    gpio->setDelay(200);
+    gpio->setPWM(servo_pin, angleToDutyCycle(angle));
 }
 
 void ServoController::changeLane(int direction) {
@@ -42,63 +41,38 @@ void ServoController::changeLane(int direction) {
         first_angle = 70;
         second_angle = 130;
     }
-    gpio.setPWM(servo_pin, angleToDutyCycle(first_angle));      // 舵机转到第一个角度
-    gpio.setDelay(2000 * 1000);
-    gpio.setPWM(servo_pin, angleToDutyCycle(100));              // 舵机归位
-    gpio.setDelay(500 * 1000);
-    gpio.setPWM(servo_pin, angleToDutyCycle(second_angle));     // 舵机转到第二个角度
-    gpio.setDelay(500 * 1000);
+    gpio->setPWM(servo_pin, angleToDutyCycle(first_angle));      // 舵机转到第一个角度
+    gpio->setDelay(1000 * 1000);
+    gpio->setPWM(servo_pin, angleToDutyCycle(100));              // 舵机归位
+    gpio->setDelay(500 * 1000);
+    gpio->setPWM(servo_pin, angleToDutyCycle(second_angle));     // 舵机转到第二个角度
+    gpio->setDelay(1000 * 1000);
 }
 
-void ServoController::coneDetour(int* detectedCone, double coneCenter) {
+void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane) {
     Logger::getLogger()->info("检测到锥桶, 开始第" + std::to_string(*detectedCone + 1) + "次绕行...");
-    double first_angle, second_angle;
-    int delay = 400 * 1000;
-    if (*detectedCone % 2 == 0) {
-        if (coneCenter < width / 4.0) {
-            first_angle = 90;
-            delay = delay - 100 * 1000;
-            second_angle = 110;
-        } else if (coneCenter > width * 3 / 4.0) {
-            first_angle = 55;
-            delay = delay + 100 * 1000;
-            second_angle = 145;
-        } else {
-            first_angle = 80;
-            second_angle = 120;
-        }
-    } else {
-        if (coneCenter < width / 4.0) {
-            first_angle = 145;
-            delay = delay + 100 * 1000;
-            second_angle = 55;
-        } else if (coneCenter > width * 3 / 4.0) {
-            first_angle = 110;
-            delay = delay - 100 * 1000;
-            second_angle = 90;
-        } else {
-            first_angle = 120;
-            second_angle = 80;
-        }
+    if (*detectedCone % 2 == 0) {   // 第一、三个锥桶右侧绕行
+        setServoAngle((coneCenter + lane.right_line.center.x) / 2.0);   // 舵机转向右侧车道中心
+        gpio->setDelay(1500 * 1000);
+        setServoAngle(lane.center.x);                                   // 舵机归位
     }
-    Logger::getLogger()->info("第" + std::to_string(*detectedCone + 1) + "次绕行角度: " + 
-                            std::to_string(first_angle) + " -> " + std::to_string(second_angle));
-    gpio.setPWM(servo_pin, angleToDutyCycle(first_angle));  // 舵机转到第一个角度
-    gpio.setDelay(delay);
-    gpio.setPWM(servo_pin, angleToDutyCycle(second_angle)); // 舵机转到第二个角度
-    gpio.setDelay(delay * 3 / 2);
+    else {                          // 第二个锥桶左侧绕行
+        setServoAngle((coneCenter + lane.left_line.center.x) / 2.0);    // 舵机转向左侧车道中心
+        gpio->setDelay(1500 * 1000);
+        setServoAngle(lane.center.x);                                   // 舵机归位
+    }
     (*detectedCone)++;
 }
 
 
-MotorController::MotorController(GPIOHandler& gpio, int motor_pin, int init_pwm, int target_pwm) : 
+MotorController::MotorController(GPIOHandler* gpio, int motor_pin, int init_pwm, int target_pwm) : 
                                 gpio(gpio), motor_pin(motor_pin), init_pwm(init_pwm), target_pwm(target_pwm) {
     MotorController::initializeMotor();
     Logger::getLogger()->info("MotorController 初始化成功");
 }
 
-MotorController::~MotorController() {
-    gpio.setPWM(motor_pin, init_pwm);
+void MotorController::stop() {
+    gpio->setPWM(motor_pin, init_pwm);
     Logger::getLogger()->info("电机归零, MotorController 销毁成功");
 }
 
@@ -112,24 +86,24 @@ void MotorController::moveForward(State& state) {
         }
         if (state.has_blueboard.load()) {                           // 蓝板停车
             i = init_pwm;
-            gpio.setPWM(motor_pin, i);
-            gpio.setDelay(200);
+            gpio->setPWM(motor_pin, i);
+            gpio->setDelay(200);
             continue;
         }
         if (state.has_crosswalk.load() && !detected_crosswalk) {    // 人行横道停车
             i = init_pwm;
-            gpio.setPWM(motor_pin, i);
-            gpio.setDelay(200 * 1000);
-            gpio.setPWM(motor_pin, i - 300);
-            gpio.setDelay(800 * 1000);
-            gpio.setPWM(motor_pin, i);
-            gpio.setDelay(4000 * 1000);
+            gpio->setPWM(motor_pin, i);
+            gpio->setDelay(200 * 1000);
+            gpio->setPWM(motor_pin, i - 300);
+            gpio->setDelay(800 * 1000);
+            gpio->setPWM(motor_pin, i);
+            gpio->setDelay(1000 * 1000);
             detected_crosswalk = true;
         }
         if (i < target_pwm) {                                       // 加速
             i += 100;
         }
-        gpio.setPWM(motor_pin, i);
-        gpio.setDelay(200);
+        gpio->setPWM(motor_pin, i);
+        gpio->setDelay(200);
     }
 }
