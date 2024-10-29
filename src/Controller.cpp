@@ -7,6 +7,7 @@ ServoController::ServoController(GPIOHandler* gpio, int servo_pin, int width) : 
 
 void ServoController::reset() {
     gpio->setPWM(servo_pin, angleToDutyCycle(100));
+    gpio->setDelay(200 * 1000);
     Logger::getLogger()->info("舵机归位, ServoController 销毁成功");
 }
 
@@ -24,6 +25,7 @@ void ServoController::setServoAngle(double center) {
         error_angle = angle_outmin;
     }
     double angle = 100 - error_angle;
+    // Logger::getLogger()->debug("偏差: " + std::to_string(error) + ", 角度: " + std::to_string(angle));
     last_error = error;
     gpio->setPWM(servo_pin, angleToDutyCycle(angle));
     gpio->setDelay(200);
@@ -51,15 +53,20 @@ void ServoController::changeLane(int direction) {
 
 void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane) {
     Logger::getLogger()->info("检测到锥桶, 开始第" + std::to_string(*detectedCone + 1) + "次绕行...");
+    double detourCenter;
     if (*detectedCone % 2 == 0) {   // 第一、三个锥桶右侧绕行
-        setServoAngle((coneCenter + lane.right_line.center.x) / 2.0);   // 舵机转向右侧车道中心
-        gpio->setDelay(1500 * 1000);
-        setServoAngle(lane.center.x);                                   // 舵机归位
+        detourCenter = (coneCenter + lane.right_line.center.x) / 2.0;
+        setServoAngle(detourCenter);   // 舵机转向右侧车道中心
+        gpio->setDelay(400 * 1000);
+        setServoAngle(width - detourCenter);                                   // 舵机归位
+        gpio->setDelay(600 * 1000);
     }
     else {                          // 第二个锥桶左侧绕行
-        setServoAngle((coneCenter + lane.left_line.center.x) / 2.0);    // 舵机转向左侧车道中心
-        gpio->setDelay(1500 * 1000);
-        setServoAngle(lane.center.x);                                   // 舵机归位
+        detourCenter = (coneCenter + lane.left_line.center.x) / 2.0;
+        setServoAngle(detourCenter);    // 舵机转向左侧车道中心
+        gpio->setDelay(400 * 1000);
+        setServoAngle(width - detourCenter);                                   // 舵机归位
+        gpio->setDelay(600 * 1000);
     }
     (*detectedCone)++;
 }
@@ -73,6 +80,7 @@ MotorController::MotorController(GPIOHandler* gpio, int motor_pin, int init_pwm,
 
 void MotorController::stop() {
     gpio->setPWM(motor_pin, init_pwm);
+    gpio->setDelay(200 * 1000);
     Logger::getLogger()->info("电机归零, MotorController 销毁成功");
 }
 

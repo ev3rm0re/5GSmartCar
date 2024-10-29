@@ -18,7 +18,6 @@ void VideoProcessor::videoProcessing() {
         recap.open("/dev/cam0");
     }
 
-    Logger::getLogger()->info("视频流打开成功");
     /******************************初始化检测器******************************/
     LineDetector lineDetector(width, height);               // 初始化边线检测器
     LaneDetector laneDetector(width, height);               // 初始化赛道检测器
@@ -36,6 +35,7 @@ void VideoProcessor::videoProcessing() {
         cv::Mat frame;
         std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();  // 计时开始
         if (!recap.read(frame)) {                             // 读取视频帧，失败则跳过这一帧
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
         cv::resize(frame, frame, cv::Size(width, height));
@@ -54,8 +54,7 @@ void VideoProcessor::videoProcessing() {
         double roi_start = height / 2.0;
         cv::Rect ROI = cv::Rect(0, roi_start, width, height - roi_start);
         cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
-        Logger::getLogger()->showMat("binary", binary);
-
+        // Logger::getLogger()->showMat("binary", binary);
         /******************************检测斑马线, 一次******************************/
         if (!state.has_crosswalk.load()) {
             if (crosswalkDetector.hasCrosswalk(&binary)) { // 检测到斑马线
@@ -104,12 +103,13 @@ void VideoProcessor::videoProcessing() {
                 servoController.coneDetour(&detectedCone, coneCenter, lane);
             }
         }
+        servoController.setServoAngle(laneCenter);  // 舵机转向赛道中心
         // std::chrono::high_resolution_clock::time_point t5 = timeCount(t4, "检测锥桶");
         /******************************计算FPS******************************/
         std::chrono::high_resolution_clock::time_point t6 = std::chrono::high_resolution_clock::now();  // 计时结束
         std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t6 - t1);
-        double fps = 1.0 / time_span.count();
-        cv::putText(frame, "FPS: " + std::to_string(fps), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
+
+        cv::putText(frame, "delay: " + std::to_string(time_span.count() * 1000).substr(0, 5) + "ms", cv::Point(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 2);
 
         /******************************视频显示******************************/
         Logger::getLogger()->showMat("frame", frame);

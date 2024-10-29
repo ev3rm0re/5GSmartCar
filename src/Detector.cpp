@@ -210,8 +210,8 @@ bool BlueBoardDetector::hasBlueBoard(cv::Mat* frame) const {
 /******************************锥桶检测器实现******************************/
 bool ConeDetector::hasCone(cv::Mat* frame, double* coneCenter) const {
 	bool has_cone = false;
-	cv::Scalar upperblue = cv::Scalar(100, 255, 255);
-	cv::Scalar lowerblue = cv::Scalar(70, 0, 240);
+	cv::Scalar upperblue = cv::Scalar(125, 255, 255);
+	cv::Scalar lowerblue = cv::Scalar(90, 150, 175);
 
 	cv::Mat ROI;
 	cv::Rect rect = cv::Rect(0, height / 2.0, width, height / 2.0);
@@ -221,7 +221,6 @@ bool ConeDetector::hasCone(cv::Mat* frame, double* coneCenter) const {
 	cv::cvtColor(ROI, hsv_frame, cv::COLOR_BGR2HSV);
 	cv::Mat blue_mask;
 	cv::inRange(hsv_frame, lowerblue, upperblue, blue_mask);
-    Logger::getLogger()->showMat("blue_mask", blue_mask);
     
 	std::vector<std::vector<cv::Point>> contours;
 	cv::findContours(blue_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
