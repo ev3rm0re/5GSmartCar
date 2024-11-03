@@ -39,7 +39,7 @@ void VideoProcessor::videoProcessing() {
             continue;
         }
         cv::resize(frame, frame, cv::Size(width, height));
-
+        
         /******************************检测蓝色挡板******************************/
         bool has_blueboard = blueboardDetector.hasBlueBoard(&frame);
         if (has_blueboard) {
@@ -54,7 +54,7 @@ void VideoProcessor::videoProcessing() {
         double roi_start = height / 2.0;
         cv::Rect ROI = cv::Rect(0, roi_start, width, height - roi_start);
         cv::Mat binary = binaryProcessor.getBinaryFrame(&frame, ROI, threshold);
-        Logger::getLogger()->showMat("binary", binary);
+
         /******************************检测斑马线, 一次******************************/
         if (!state.has_crosswalk.load()) {
             if (crosswalkDetector.hasCrosswalk(&binary)) { // 检测到斑马线

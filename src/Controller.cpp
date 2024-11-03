@@ -56,20 +56,17 @@ void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane
     double detourCenter;
     if (*detectedCone % 2 == 0) {   // 第一、三个锥桶右侧绕行
         detourCenter = (coneCenter + lane.right_line.center.x) / 2.0;
-        Logger::getLogger()->debug("detourCenter: " + std::to_string(detourCenter));
-        setServoAngle(detourCenter);   // 舵机转向右侧车道中心
-        gpio->setDelay(400 * 1000);
-        setServoAngle(width - detourCenter);                                   // 舵机归位
-        gpio->setDelay(600 * 1000);
     }
     else {                          // 第二个锥桶左侧绕行
         detourCenter = (coneCenter + lane.left_line.center.x) / 2.0;
-        Logger::getLogger()->debug("detourCenter: " + std::to_string(detourCenter));
-        setServoAngle(detourCenter);    // 舵机转向左侧车道中心
-        gpio->setDelay(400 * 1000);
-        setServoAngle(width - detourCenter);                                   // 舵机归位
-        gpio->setDelay(600 * 1000);
     }
+    Logger::getLogger()->debug("detourCenter: " + std::to_string(detourCenter));
+    setServoAngle(detourCenter);
+    gpio->setDelay(500 * 1000);
+    gpio->setPWM(servo_pin, angleToDutyCycle(100));
+    gpio->setDelay(300 * 1000);
+    setServoAngle(width - detourCenter);
+    gpio->setDelay(500 * 1000);
     (*detectedCone)++;
 }
 
