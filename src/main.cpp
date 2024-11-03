@@ -22,8 +22,6 @@ void signalHandler(int signum) { // 信号处理函数
     Logger::getLogger()->info("接收到信号: " + std::to_string(signum) + "，程序即将退出...");
 }
 
-// GPIOHandler gpio; // GPIOHandler 全局实例(必须放到主函数外面，不然不知道为什么会影响ctrl+c退出信号的获取)
-
 int main() {
     std::cout << "****************程序开始运行****************" << std::endl;
     /******************************系统设置******************************/
