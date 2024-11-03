@@ -45,6 +45,8 @@ private:
     bool stop;
 
     void reader() {
+        cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1.0);
+        cap.set(cv::CAP_PROP_EXPOSURE, 0.0);
         while (!stop) {
             cv::Mat frame;
             if (!cap.read(frame)) {

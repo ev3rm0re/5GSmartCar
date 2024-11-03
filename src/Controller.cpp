@@ -62,11 +62,11 @@ void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane
     }
     Logger::getLogger()->debug("detourCenter: " + std::to_string(detourCenter));
     setServoAngle(detourCenter);
-    gpio->setDelay(500 * 1000);
+    gpio->setDelay(400 * 1000);
     gpio->setPWM(servo_pin, angleToDutyCycle(100));
-    gpio->setDelay(300 * 1000);
+    gpio->setDelay(400 * 1000);
     setServoAngle(width - detourCenter);
-    gpio->setDelay(500 * 1000);
+    gpio->setDelay(600 * 1000);
     (*detectedCone)++;
 }
 

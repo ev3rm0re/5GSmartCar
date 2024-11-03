@@ -15,6 +15,9 @@ int main() {
     cv::createTrackbar("Val Min", "HSV Tuning", &vmin, 255);
     cv::createTrackbar("Val Max", "HSV Tuning", &vmax, 255);
 
+    cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1.0);
+    cap.set(cv::CAP_PROP_EXPOSURE, 0.0);
+
     while (true) {
         cv::Mat frame;
         cap >> frame;
@@ -26,6 +29,7 @@ int main() {
         cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
         cv::Mat mask;
         cv::inRange(hsv, cv::Scalar(hmin, smin, vmin), cv::Scalar(hmax, smax, vmax), mask);
+        cv::imshow("frame", frame);
         cv::imshow("mask", mask);
         if (cv::waitKey(1) == 27) {
             break;

@@ -210,8 +210,8 @@ bool BlueBoardDetector::hasBlueBoard(cv::Mat* frame) const {
 /******************************锥桶检测器实现******************************/
 bool ConeDetector::hasCone(cv::Mat* frame, double* coneCenter) const {
 	bool has_cone = false;
-	cv::Scalar upperblue = cv::Scalar(95, 200, 255);
-	cv::Scalar lowerblue = cv::Scalar(60, 60, 215);
+	cv::Scalar upperblue = cv::Scalar(120, 255, 255);
+	cv::Scalar lowerblue = cv::Scalar(80, 160, 70);
 
 	cv::Mat ROI;
 	cv::Rect rect = cv::Rect(0, height / 2.0, width, height / 2.0);
