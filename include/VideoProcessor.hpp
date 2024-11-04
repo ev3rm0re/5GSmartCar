@@ -4,6 +4,7 @@
 #include <csignal>
 #include <unistd.h>
 #include <time.h>
+#include <yaml-cpp/yaml.h>
 
 #include "RealTimeVideoCapture.hpp"
 #include "Struct.hpp"
@@ -14,14 +15,21 @@
 
 extern std::atomic<bool> isRunning, cameraOpened;
 extern GPIOHandler gpio;
+extern YAML::Node config;
 
 // VideoProcessor: 负责视频处理
 class VideoProcessor {
 public:
-    VideoProcessor(ServoController& servoController, int initialThreshold, bool isVideo, std::string videopath, bool playaudio, std::string audiopath, int width, int height, 
-                    std::string onnxmodelpath, State& state, int servo_pin) : 
-                    servoController(servoController), initialThreshold(initialThreshold), isVideo(isVideo), videopath(videopath), playaudio(playaudio), 
-                    audiopath(audiopath), width(width), height(height), onnxmodelpath(onnxmodelpath), state(state), servo_pin(servo_pin) {};
+    VideoProcessor(ServoController& servoController, State& state) : servoController(servoController), state(state) {
+        this->initialThreshold = config["initialThreshold"].as<int>();
+        this->isvideo = config["video"]["isvideo"].as<bool>();
+        this->videopath = config["video"]["videopath"].as<std::string>();
+        this->playaudio = config["audio"]["playaudio"].as<bool>();
+        this->audiopath = config["audio"]["audiopath"].as<std::string>();
+        this->width = config["frame"]["width"].as<int>();
+        this->height = config["frame"]["height"].as<int>();
+        this->onnxmodelpath = config["linedetect"]["onnxmodelpath"].as<std::string>();
+    };
 
     void videoProcessing();
 
@@ -29,12 +37,11 @@ private:
     ServoController& servoController;
     int initialThreshold;
     State& state;
-    bool isVideo;
+    bool isvideo;
     std::string videopath;
     bool playaudio;
     std::string audiopath;
     std::string onnxmodelpath;
-    int servo_pin;
     int width;
     int height;
     Logger logger;

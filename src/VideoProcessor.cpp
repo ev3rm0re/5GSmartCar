@@ -11,7 +11,7 @@ void VideoProcessor::videoProcessing() {
     Logger::getLogger()->info("开始视频处理...");
     /******************************打开摄像头或视频******************************/
     RealTimeVideoCapture recap;
-    if (isVideo) {
+    if (isvideo) {
         recap.open(videopath);
     }
     else {

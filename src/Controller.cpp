@@ -1,10 +1,6 @@
 #include "Controller.hpp"
 
-ServoController::ServoController(GPIOHandler* gpio, int servo_pin, int width) : gpio(gpio), servo_pin(servo_pin), width(width) {
-    ServoController::initializeServo();
-    Logger::getLogger()->info("ServoController 初始化成功");
-}
-
+/******************************舵机******************************/
 void ServoController::reset() {
     gpio->setPWM(servo_pin, angleToDutyCycle(100));
     gpio->setDelay(200 * 1000);
@@ -71,12 +67,7 @@ void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane
 }
 
 
-MotorController::MotorController(GPIOHandler* gpio, int motor_pin, int init_pwm, int target_pwm) : 
-                                gpio(gpio), motor_pin(motor_pin), init_pwm(init_pwm), target_pwm(target_pwm) {
-    MotorController::initializeMotor();
-    Logger::getLogger()->info("MotorController 初始化成功");
-}
-
+/******************************电机******************************/
 void MotorController::stop() {
     gpio->setPWM(motor_pin, init_pwm);
     gpio->setDelay(200 * 1000);

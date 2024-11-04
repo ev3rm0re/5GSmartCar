@@ -5,6 +5,7 @@
 #include <atomic>
 #include <time.h>
 #include <chrono>
+#include <cassert>
 #include <yaml-cpp/yaml.h>
 
 #include "VideoProcessor.hpp"
@@ -22,24 +23,17 @@ void signalHandler(int signum) { // 信号处理函数
     Logger::getLogger()->info("接收到信号: " + std::to_string(signum) + "，程序即将退出...");
 }
 
+YAML::Node config = YAML::LoadFile("/home/pi/Code/5GSmartCar/config/configs.yaml");
+
 int main() {
+    assert(config.IsDefined());
     std::cout << "****************程序开始运行****************" << std::endl;
     /******************************系统设置******************************/
     system("sudo cp /home/pi/.Xauthority /root"); // 用于解决无法显示图像的问题
 
-    /******************************GPIO初始化******************************/
-    gpioHandlerPtr = std::make_unique<GPIOHandler>();
-
     /******************************信号处理函数******************************/
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
-
-    /******************************加载配置文件******************************/
-    if (access("/home/pi/Code/5GSmartCar/config/configs.yaml", F_OK) == -1) {
-        Logger::getLogger()->error("配置文件不存在");
-        return -1;
-    }
-    YAML::Node config = YAML::LoadFile("/home/pi/Code/5GSmartCar/config/configs.yaml");
 
     /******************************设置LOGLEVEL******************************/
     std::string loglevel = config["loglevel"].as<std::string>();
@@ -54,23 +48,6 @@ int main() {
     }
 
     /******************************参数获取******************************/
-    // gpio
-    int servo_pin = config["gpio"]["servo_pin"].as<int>();
-    int motor_pin = config["gpio"]["motor_pin"].as<int>();
-    int init_pwm = config["gpio"]["init_pwm"].as<int>();
-    int target_pwm = config["gpio"]["target_pwm"].as<int>();
-    // 摄像头
-    int initialThreshold = config["initialThreshold"].as<int>();
-    int width = config["frame"]["width"].as<int>();
-    int height = config["frame"]["height"].as<int>();
-    // 音频
-    bool playaudio = config["audio"]["playaudio"].as<bool>();
-    std::string audiopath = config["audio"]["audiopath"].as<std::string>();
-    // 检测
-    std::string onnxmodelpath = config["linedetect"]["onnxmodelpath"].as<std::string>();
-    // 视频
-    bool isvideo = config["video"]["isvideo"].as<bool>();
-    std::string videopath = config["video"]["videopath"].as<std::string>();
     // 移动控制
     bool movecontrol = config["movecontrol"].as<bool>();
     // 是否调用录像
@@ -83,16 +60,19 @@ int main() {
         return 0;
     }
 
+    /******************************GPIO初始化******************************/
+    gpioHandlerPtr = std::make_unique<GPIOHandler>();
+
     /******************************控制******************************/
     // 初始化状态
     State state;
 
     // 初始化 motorController
-    MotorController motorController(gpioHandlerPtr.get(), motor_pin, init_pwm, target_pwm);
+    MotorController motorController(gpioHandlerPtr.get());
     // 初始化舵机控制器
-    ServoController servoController(gpioHandlerPtr.get(), servo_pin, width);
+    ServoController servoController(gpioHandlerPtr.get());
     // 初始化 videoProcessor
-    VideoProcessor videoProcessor(std::ref(servoController), initialThreshold, isvideo, videopath, playaudio, audiopath, width, height, onnxmodelpath, state, servo_pin);
+    VideoProcessor videoProcessor(std::ref(servoController), std::ref(state));
 
     std::thread videoThread(&VideoProcessor::videoProcessing, &videoProcessor);                                     // 检测线程
     std::thread motorThread;

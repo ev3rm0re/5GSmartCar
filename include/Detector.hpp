@@ -2,10 +2,15 @@
 
 // std
 #include <vector>
+#include <yaml-cpp/yaml.h>
+
+#include <opencv2/opencv.hpp>
 
 // 边线结构体
 #include "Struct.hpp"
 #include "Logger.hpp"
+
+extern YAML::Node config;
 
 
 // LineDetector: 负责边线检测
@@ -89,10 +94,19 @@ private:
 // ConeDetector: 负责锥桶检测
 class ConeDetector {
 public:
-	ConeDetector(int width, int height) : width(width), height(height) {};
+	ConeDetector(int width, int height) : width(width), height(height) {
+        this->upperblue = cv::Scalar(config["conedetector"]["upperblue"]["H"].as<int>(),
+                                      config["conedetector"]["upperblue"]["S"].as<int>(),
+                                      config["conedetector"]["upperblue"]["V"].as<int>());
+        this->lowerblue = cv::Scalar(config["conedetector"]["lowerblue"]["H"].as<int>(),
+                                      config["conedetector"]["lowerblue"]["S"].as<int>(),
+                                      config["conedetector"]["lowerblue"]["V"].as<int>());
+    };
 	bool hasCone(cv::Mat* frame, double* center) const;
 
 private:
 	int width;
 	int height;
+    cv::Scalar upperblue;
+    cv::Scalar lowerblue;
 };

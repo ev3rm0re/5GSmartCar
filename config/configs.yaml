@@ -13,6 +13,16 @@ initialThreshold: 80
 linedetect:
   onnxmodelpath: "/home/pi/Code/5GSmartCar/models/arrow-yolo11n-cls-v3.onnx"
 
+conedetector:
+  upperblue:
+    H: 120
+    S: 255
+    V: 255
+  lowerblue:
+    H: 80
+    S: 160
+    V: 70
+
 video:
   isvideo: false
   videopath: "/home/pi/Code/5GSmartCar/medias/playground2.avi"

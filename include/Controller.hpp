@@ -4,11 +4,13 @@
 #include <unistd.h>
 #include <string>
 #include <atomic>
+#include <yaml-cpp/yaml.h>
 
 #include "Logger.hpp"
 #include "Struct.hpp"
 
 extern std::atomic<bool> isRunning, cameraOpened;      // isRunning: 控制程序运行, cameraOpened: 控制电机启动
+extern YAML::Node config;                              // config: 配置文件
 
 // GPIOHandler: 负责 GPIO 操作
 class GPIOHandler {
@@ -65,7 +67,12 @@ private:
 // ServoController: 舵机控制器
 class ServoController {
 public:
-    ServoController(GPIOHandler* gpio, int servo_pin, int width);
+    ServoController(GPIOHandler* gpio){
+        this->servo_pin = config["gpio"]["servo_pin"].as<int>();
+        this->width = config["frame"]["width"].as<int>();
+        ServoController::initializeServo();
+        Logger::getLogger()->info("ServoController 初始化成功");
+    };
     void reset();
     double angleToDutyCycle(double angle);
     void setServoAngle(double center);
@@ -100,7 +107,13 @@ private:
 // MotorController: 电机控制器
 class MotorController {
 public:
-    MotorController(GPIOHandler* gpio, int motor_pin, int init_pwm, int target_pwm);
+    MotorController(GPIOHandler* gpio){
+        this->motor_pin = config["gpio"]["motor_pin"].as<int>();
+        this->init_pwm = config["gpio"]["init_pwm"].as<int>();
+        this->target_pwm = config["gpio"]["target_pwm"].as<int>();
+        MotorController::initializeMotor();
+        Logger::getLogger()->info("MotorController 初始化成功");
+    };
     void stop();
     void moveForward(State& state);
 
