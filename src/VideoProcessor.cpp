@@ -11,12 +11,7 @@ void VideoProcessor::videoProcessing() {
     Logger::getLogger()->info("开始视频处理...");
     /******************************打开摄像头或视频******************************/
     RealTimeVideoCapture recap;
-    if (isvideo) {
-        recap.open(videopath);
-    }
-    else {
-        recap.open("/dev/cam0");
-    }
+    recap.open("/dev/cam0");
 
     /******************************初始化检测器******************************/
     LineDetector lineDetector(width, height);               // 初始化边线检测器
@@ -101,26 +96,26 @@ void VideoProcessor::videoProcessing() {
         }
         // std::chrono::high_resolution_clock::time_point t4 = timeCount(t3, "检测赛道");
         /******************************检测锥桶******************************/
-        if (detectedCone < 3) {                     // 绕行锥桶三次后就不再检测, 提高运行速度
-            double coneCenter;
-            if (coneDetector.hasCone(&frame, &coneCenter)) {
-                servoController.coneDetour(&detectedCone, coneCenter, lane);
+        // if (detectedCone < 3) {                     // 绕行锥桶三次后就不再检测, 提高运行速度
+        //     double coneCenter;
+        //     if (coneDetector.hasCone(&frame, &coneCenter)) {
+        //         servoController.coneDetour(&detectedCone, coneCenter, lane);
+        //     }
+        // }
+        // else {                                      // 锥桶之后进行蓝色区域检测，大于一定阈值进行OCR识别
+        cv::Mat roi;
+        double blueArea = letterOCR.blueAreaCount(frame, roi);
+        if (blueArea > width * height / 120) {
+            std::string text = letterOCR.recognize(roi);
+            Logger::getLogger()->info("OCR识别结果: " + text);
+            if (text.find('B') != std::string::npos) {
+                servoController.stopToArea('B', state);
+            }
+            else if (text.find('A') != std::string::npos) {
+                servoController.stopToArea('A', state);
             }
         }
-        else {                                      // 锥桶之后进行蓝色区域检测，大于一定阈值进行OCR识别
-            cv::Mat roi;
-            double blueArea = letterOCR.blueAreaCount(frame, roi);
-            if (blueArea > width * height / 60) {
-                std::string text = letterOCR.recognize(roi);
-                Logger::getLogger()->info("OCR识别结果: " + text);
-                if (text.find('B') != std::string::npos) {
-                    servoController.stopToArea('B', state);
-                }
-                else if (text.find('A') != std::string::npos) {
-                    servoController.stopToArea('A', state);
-                }
-            }
-        }
+        // }
         servoController.setServoAngle(laneCenter);  // 舵机转向赛道中心
         // std::chrono::high_resolution_clock::time_point t5 = timeCount(t4, "检测锥桶");
         /******************************计算FPS******************************/

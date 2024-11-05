@@ -23,8 +23,6 @@ class VideoProcessor {
 public:
     VideoProcessor(ServoController& servoController, State& state) : servoController(servoController), state(state) {
         this->initialThreshold = config["initialThreshold"].as<int>();
-        this->isvideo = config["video"]["isvideo"].as<bool>();
-        this->videopath = config["video"]["videopath"].as<std::string>();
         this->playaudio = config["audio"]["playaudio"].as<bool>();
         this->audiopath = config["audio"]["audiopath"].as<std::string>();
         this->width = config["frame"]["width"].as<int>();
@@ -38,8 +36,6 @@ private:
     ServoController& servoController;
     int initialThreshold;
     State& state;
-    bool isvideo;
-    std::string videopath;
     bool playaudio;
     std::string audiopath;
     std::string onnxmodelpath;

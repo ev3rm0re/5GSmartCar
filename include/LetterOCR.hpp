@@ -36,7 +36,12 @@ public:
 
 	    if (largestContourIndex != -1) {
 	    	cv::Rect blueROI = cv::boundingRect(contours[largestContourIndex]);
-	    	roi = img(blueROI);
+            // 裁剪ROI，取中心部分
+            int x = blueROI.x + blueROI.width / 4;
+            int y = blueROI.y;
+            int w = blueROI.width / 2;
+            int h = blueROI.height;
+            roi = img(cv::Rect(x, y, w, h));
         }
         return cv::countNonZero(mask);
     }
@@ -45,6 +50,13 @@ public:
         cv::Mat gray, binary;
         cv::cvtColor(roi, gray, cv::COLOR_BGR2GRAY);
         cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+        // 投影变换
+        cv::Point2f src[4] = {cv::Point2f(10, 0), cv::Point2f(roi.cols - 10, 0), cv::Point2f(roi.cols, roi.rows), cv::Point2f(0, roi.rows)}; 
+        cv::Point2f dst[4] = {cv::Point2f(20, 0), cv::Point2f(roi.cols - 20, 0), cv::Point2f(roi.cols - 20, roi.rows), cv::Point2f(20, roi.rows)};
+        cv::Mat t = cv::getPerspectiveTransform(src, dst);
+        cv::warpPerspective(binary, binary, t, binary.size());
+
+        Logger::getLogger()->showMat("binary", binary);
 
         ocr_.SetImage(binary.data, binary.cols, binary.rows, 1, binary.step);
         return ocr_.GetUTF8Text();

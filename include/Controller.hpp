@@ -68,6 +68,7 @@ private:
 class ServoController {
 public:
     ServoController(GPIOHandler* gpio){
+        this->gpio = gpio;
         this->servo_pin = config["gpio"]["servo_pin"].as<int>();
         this->width = config["frame"]["width"].as<int>();
         ServoController::initializeServo();
@@ -109,6 +110,7 @@ private:
 class MotorController {
 public:
     MotorController(GPIOHandler* gpio){
+        this->gpio = gpio;
         this->motor_pin = config["gpio"]["motor_pin"].as<int>();
         this->init_pwm = config["gpio"]["init_pwm"].as<int>();
         this->target_pwm = config["gpio"]["target_pwm"].as<int>();
