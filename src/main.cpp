@@ -28,8 +28,12 @@ YAML::Node config = YAML::LoadFile("/home/pi/Code/5GSmartCar/config/configs.yaml
 int main() {
     assert(config.IsDefined());
     std::cout << "****************程序开始运行****************" << std::endl;
+
     /******************************系统设置******************************/
     system("sudo cp /home/pi/.Xauthority /root"); // 用于解决无法显示图像的问题
+
+    /******************************GPIO初始化******************************/
+    gpioHandlerPtr = std::make_unique<GPIOHandler>();
 
     /******************************信号处理函数******************************/
     std::signal(SIGINT, signalHandler);
@@ -59,9 +63,6 @@ int main() {
         videoRecorder.record();
         return 0;
     }
-
-    /******************************GPIO初始化******************************/
-    gpioHandlerPtr = std::make_unique<GPIOHandler>();
 
     /******************************控制******************************/
     // 初始化状态

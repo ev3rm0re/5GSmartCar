@@ -20,6 +20,8 @@
                 "-l", "opencv_videoio",
                 "-l", "opencv_video",
                 "-l", "pigpio",
+                "-l", "tesseract",
+                "-l", "lept"
             ],
             "options": {
                 "cwd": "${fileDirname}"

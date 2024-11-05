@@ -26,9 +26,11 @@ void VideoProcessor::videoProcessing() {
     CrosswalkDetector crosswalkDetector(width, height);     // 初始化人行横道检测器
     BlueBoardDetector blueboardDetector(width, height);     // 初始化蓝色挡板检测器
     ConeDetector coneDetector(width, height);               // 初始化锥桶检测器
+    LetterOCR letterOCR;                                    // 初始化OCR
     
     int threshold = initialThreshold;                       // 初始化阈值
     int detectedCone = 0;                                   // 已检测到的锥桶数量
+    bool detectedBlueBoard = false;                         // 是否检测过蓝色挡板
 
     /******************************视频处理循环******************************/
     while (isRunning.load()) {
@@ -42,13 +44,14 @@ void VideoProcessor::videoProcessing() {
         
         /******************************检测蓝色挡板******************************/
         bool has_blueboard = blueboardDetector.hasBlueBoard(&frame);
-        if (has_blueboard) {
+        if (has_blueboard && !detectedBlueBoard) {
             state.has_blueboard.store(true);
             continue;
         }
         else {
             state.has_blueboard.store(false);
         }
+        detectedBlueBoard = true;
         // std::chrono::high_resolution_clock::time_point t2 = timeCount(t1, "检测蓝色挡板");
         /******************************取ROI和二值化处理******************************/
         double roi_start = height / 2.0;
@@ -102,6 +105,14 @@ void VideoProcessor::videoProcessing() {
             double coneCenter;
             if (coneDetector.hasCone(&frame, &coneCenter)) {
                 servoController.coneDetour(&detectedCone, coneCenter, lane);
+            }
+        }
+        else {                                      // 锥桶之后进行蓝色区域检测，大于一定阈值进行OCR识别
+            cv::Mat roi;
+            double blueArea = letterOCR.blueAreaCount(frame, roi);
+            if (blueArea > width * height / 60 && blueArea < width * height / 20) {
+                std::string text = letterOCR.recognize(roi);
+                Logger::getLogger()->info("OCR识别结果: " + text);
             }
         }
         servoController.setServoAngle(laneCenter);  // 舵机转向赛道中心
