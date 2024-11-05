@@ -85,17 +85,5 @@ class State {
 public:
     std::atomic<bool> has_crosswalk{false};
     std::atomic<bool> has_blueboard{false};
-	std::atomic<int> detectedCone{0};
-	std::atomic<bool> isDetouring{true};
-};
-
-
-
-// TODO: 使用Variable类代替多个atomic变量
-class Variable {
-public:
-	std::atomic<int> mode{0};
-	std::atomic<int> direction{0};
-	std::atomic<int> detectedCone{0};
-	std::atomic<double> lane_center{0};
+	std::atomic<bool> stop{false};
 };

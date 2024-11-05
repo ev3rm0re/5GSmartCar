@@ -110,9 +110,15 @@ void VideoProcessor::videoProcessing() {
         else {                                      // 锥桶之后进行蓝色区域检测，大于一定阈值进行OCR识别
             cv::Mat roi;
             double blueArea = letterOCR.blueAreaCount(frame, roi);
-            if (blueArea > width * height / 60 && blueArea < width * height / 20) {
+            if (blueArea > width * height / 60) {
                 std::string text = letterOCR.recognize(roi);
                 Logger::getLogger()->info("OCR识别结果: " + text);
+                if (text.find('B') != std::string::npos) {
+                    servoController.stopToArea('B', state);
+                }
+                else if (text.find('A') != std::string::npos) {
+                    servoController.stopToArea('A', state);
+                }
             }
         }
         servoController.setServoAngle(laneCenter);  // 舵机转向赛道中心

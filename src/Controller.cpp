@@ -66,6 +66,26 @@ void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane
     (*detectedCone)++;
 }
 
+void ServoController::stopToArea(char letter, State& state) {
+    Logger::getLogger()->info("检测到蓝色区域, 停车到指定区域...");
+    int first_angle, second_angle;
+    if (letter == 'A') {
+        first_angle = 130;
+        second_angle = 70;
+    }
+    else if (letter == 'B') {
+        first_angle = 70;
+        second_angle = 130;
+    }
+    gpio->setPWM(servo_pin, angleToDutyCycle(first_angle));
+    gpio->setDelay(500 * 1000);
+    gpio->setPWM(servo_pin, angleToDutyCycle(second_angle));
+    gpio->setDelay(500 * 1000);
+    gpio->setPWM(servo_pin, angleToDutyCycle(100));
+    gpio->setDelay(200 * 1000);
+    state.stop.store(true);
+}
+
 
 /******************************电机******************************/
 void MotorController::stop() {
@@ -100,6 +120,12 @@ void MotorController::moveForward(State& state) {
         }
         if (i < target_pwm) {                                       // 加速
             i += 100;
+        }
+        if (state.stop.load()) {                                    // 停车
+            i = init_pwm;
+            gpio->setPWM(motor_pin, i);
+            gpio->setDelay(200);
+            break;
         }
         gpio->setPWM(motor_pin, i);
         gpio->setDelay(200);
