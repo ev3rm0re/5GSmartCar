@@ -11,7 +11,7 @@
 #include "Detector.hpp"
 #include "Controller.hpp"
 #include "Logger.hpp"
-#include "LetterOCR.hpp"
+#include "LetterClassificator.hpp"
 
 
 extern std::atomic<bool> isRunning, cameraOpened;

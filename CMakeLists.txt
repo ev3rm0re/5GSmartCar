@@ -8,9 +8,6 @@ set(CMAKE_CXX_FLAGS "${CAMKE_CXX_FLAGS} -std=c++17 -pthread")
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-find_path(Tesseract_INCLUDE_DIRS tesseract/baseapi.h)
-find_library(Tesseract_LIBRARIES tesseract)
-
 find_library(YAMLCPP_LIBRARIES NAMES libyaml-cpp.so HINTS /usr/lib)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -28,4 +25,4 @@ link_libraries(${YAMLCPP_LIBRARIES})
 aux_source_directory(src DIR_SRCS)
 add_executable(${PROJECT_NAME} ${DIR_SRCS})
 
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${PIGPIO_LIBRARY} ${YAMLCPP_LIBRARIES} atomic ${Tesseract_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${PIGPIO_LIBRARY} ${YAMLCPP_LIBRARIES} atomic)

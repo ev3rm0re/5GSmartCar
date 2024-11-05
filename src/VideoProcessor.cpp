@@ -21,7 +21,7 @@ void VideoProcessor::videoProcessing() {
     CrosswalkDetector crosswalkDetector(width, height);     // 初始化人行横道检测器
     BlueBoardDetector blueboardDetector(width, height);     // 初始化蓝色挡板检测器
     ConeDetector coneDetector(width, height);               // 初始化锥桶检测器
-    LetterOCR letterOCR;                                    // 初始化OCR
+    LetterClassificator letterClassificator;                          // 初始化分类器
     
     int threshold = initialThreshold;                       // 初始化阈值
     int detectedCone = 0;                                   // 已检测到的锥桶数量
@@ -104,14 +104,13 @@ void VideoProcessor::videoProcessing() {
         // }
         // else {                                      // 锥桶之后进行蓝色区域检测，大于一定阈值进行OCR识别
         cv::Mat roi;
-        double blueArea = letterOCR.blueAreaCount(frame, roi);
+        double blueArea = letterClassificator.blueAreaCount(frame, roi);
         if (blueArea > width * height / 120) {
-            std::string text = letterOCR.recognize(roi);
-            Logger::getLogger()->info("OCR识别结果: " + text);
-            if (text.find('B') != std::string::npos) {
+            int result = letterClassificator.recognize(roi);
+            if (result == 1) {
                 servoController.stopToArea('B', state);
             }
-            else if (text.find('A') != std::string::npos) {
+            else if (result == 0) {
                 servoController.stopToArea('A', state);
             }
         }

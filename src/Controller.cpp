@@ -67,7 +67,7 @@ void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane
 }
 
 void ServoController::stopToArea(char letter, State& state) {
-    Logger::getLogger()->info("检测到蓝色区域, 停车到指定区域...");
+    Logger::getLogger()->info("检测到蓝色区域, 停车到" + std::string(1, letter) + "区域...");
     int first_angle, second_angle;
     if (letter == 'A') {
         first_angle = 130;
