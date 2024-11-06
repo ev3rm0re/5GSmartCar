@@ -8,7 +8,7 @@ public:
         cv::Mat hsv;
         cv::cvtColor(img, hsv, cv::COLOR_BGR2HSV);
         cv::Mat mask;
-        cv::inRange(hsv, cv::Scalar(100, 150, 50), cv::Scalar(140, 255, 255), mask);
+        cv::inRange(hsv, cv::Scalar(70, 100, 35), cv::Scalar(145, 255, 255), mask);
 
         std::vector<std::vector<cv::Point>> contours;
 	    cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
@@ -45,6 +45,8 @@ public:
         cv::Mat t = cv::getPerspectiveTransform(src, dst);
         cv::warpPerspective(binary, binary, t, binary.size());
         Logger::getLogger()->showMat("binary", binary);
+
+        cv::imwrite("/home/pi/Code/5GSmartCar/medias/letter.jpg", binary);
 
         // 使用onnx模型识别字母
         cv::dnn::Net net = cv::dnn::readNetFromONNX("/home/pi/Code/5GSmartCar/models/letter_model.onnx");

@@ -79,17 +79,17 @@ public:
     void setServoAngle(double center);
     void changeLane(int direction);
     void coneDetour(int* detectedCone, double coneCenter, Lane lane);
-    void stopToArea(char letter, State& state);
+    void stopToArea(char letter);
 
 private:
     void initializeServo() {    // 初始化舵机
         gpio->setMode(servo_pin, PI_OUTPUT);
         gpio->setPWMfrequency(servo_pin, 50);
         gpio->setPWMrange(servo_pin, 100);
-        gpio->setPWM(servo_pin, angleToDutyCycle(55));
-        gpio->setDelay(1500 * 1000);
-        gpio->setPWM(servo_pin, angleToDutyCycle(145));
-        gpio->setDelay(1500 * 1000);
+        // gpio->setPWM(servo_pin, angleToDutyCycle(55));
+        // gpio->setDelay(1500 * 1000);
+        // gpio->setPWM(servo_pin, angleToDutyCycle(145));
+        // gpio->setDelay(1500 * 1000);
         gpio->setPWM(servo_pin, angleToDutyCycle(100));
         gpio->setDelay(1500 * 1000);
     }

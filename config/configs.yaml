@@ -8,7 +8,7 @@ frame:
   width: 300
   height: 200
 
-initialThreshold: 100
+initialThreshold: 30
 
 linedetect:
   onnxmodelpath: "/home/pi/Code/5GSmartCar/models/arrow-yolo11n-cls-v3.onnx"
@@ -27,7 +27,7 @@ audio:
   playaudio: false
   audiopath: "/home/pi/Code/5GSmartCar/medias/sunshangxiang.wav"
 
-movecontrol: false
+movecontrol: true
 
 recordvideo: false
 

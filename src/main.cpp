@@ -19,7 +19,7 @@ std::atomic<bool> isRunning(true), cameraOpened(false);
 static std::unique_ptr<GPIOHandler> gpioHandlerPtr; // 全局静态智能指针，用于管理 GPIOHandler 实例
 
 void signalHandler(int signum) { // 信号处理函数
-    isRunning = false;
+    isRunning.store(false);
     Logger::getLogger()->info("接收到信号: " + std::to_string(signum) + "，程序即将退出...");
 }
 
