@@ -96,28 +96,28 @@ void VideoProcessor::videoProcessing() {
         }
         // std::chrono::high_resolution_clock::time_point t4 = timeCount(t3, "检测赛道");
         /******************************检测锥桶******************************/
-        // if (detectedCone < 3) {                     // 绕行锥桶三次后就不再检测, 提高运行速度
-        //     double coneCenter;
-        //     if (coneDetector.hasCone(&frame, &coneCenter)) {
-        //         servoController.coneDetour(&detectedCone, coneCenter, lane);
-        //     }
-        // }
-        // else {                                      // 锥桶之后进行蓝色区域检测，大于一定阈值进行OCR识别
-        cv::Mat roi;
-        double blueArea = letterClassificator.blueAreaCount(frame, roi);
-        Logger::getLogger()->debug("蓝色区域面积: " + std::to_string(blueArea));
-        if (blueArea > width * height / 24) {
-            int result = letterClassificator.recognize(roi);
-            if (result == 1) {
-                servoController.stopToArea('B');
+        if (detectedCone < 3) {                     // 绕行锥桶三次后就不再检测, 提高运行速度
+            double coneCenter;
+            if (coneDetector.hasCone(&frame, &coneCenter)) {
+                servoController.coneDetour(&detectedCone, coneCenter, lane);
             }
-            else if (result == 0) {
-                servoController.stopToArea('A');
-            }
-            isRunning.store(false);
-            break;
         }
-        // }
+        else {                                      // 锥桶之后进行蓝色区域检测，大于一定阈值进行OCR识别
+            cv::Mat roi;
+            double blueArea = letterClassificator.blueAreaCount(frame, roi);
+            Logger::getLogger()->debug("蓝色区域面积: " + std::to_string(blueArea));
+            if (blueArea > width * height / 24) {
+                int result = letterClassificator.recognize(roi);
+                if (result == 1) {
+                    servoController.stopToArea('B');
+                }
+                else if (result == 0) {
+                    servoController.stopToArea('A');
+                }
+                isRunning.store(false);
+                break;
+            }
+        }
         servoController.setServoAngle(laneCenter);  // 舵机转向赛道中心
         // std::chrono::high_resolution_clock::time_point t5 = timeCount(t4, "检测锥桶");
         /******************************计算FPS******************************/

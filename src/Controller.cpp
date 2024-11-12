@@ -40,11 +40,11 @@ void ServoController::changeLane(int direction) {
         second_angle = 130;
     }
     gpio->setPWM(servo_pin, angleToDutyCycle(first_angle));      // 舵机转到第一个角度
-    gpio->setDelay(1000 * 1000);
+    gpio->setDelay(800 * 1000);
     gpio->setPWM(servo_pin, angleToDutyCycle(100));              // 舵机归位
-    gpio->setDelay(500 * 1000);
+    gpio->setDelay(400 * 1000);
     gpio->setPWM(servo_pin, angleToDutyCycle(second_angle));     // 舵机转到第二个角度
-    gpio->setDelay(1000 * 1000);
+    gpio->setDelay(800 * 1000);
 }
 
 void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane) {
@@ -58,7 +58,7 @@ void ServoController::coneDetour(int* detectedCone, double coneCenter, Lane lane
     }
     Logger::getLogger()->debug("detourCenter: " + std::to_string(detourCenter));
     setServoAngle(detourCenter);
-    gpio->setDelay(300 * 1000);
+    gpio->setDelay(400 * 1000);
     gpio->setPWM(servo_pin, angleToDutyCycle(100));
     gpio->setDelay(300 * 1000);
     setServoAngle(width - detourCenter);
@@ -116,6 +116,7 @@ void MotorController::moveForward(State& state) {
             gpio->setPWM(motor_pin, i);
             gpio->setDelay(1000 * 1000);
             detected_crosswalk = true;
+            sleep(6);
         }
         if (i < target_pwm) {                                       // 加速
             i += 100;

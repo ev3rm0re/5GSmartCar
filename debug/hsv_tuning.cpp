@@ -15,9 +15,6 @@ int main() {
     cv::createTrackbar("Val Min", "HSV Tuning", &vmin, 255);
     cv::createTrackbar("Val Max", "HSV Tuning", &vmax, 255);
 
-    cap.set(cv::CAP_PROP_AUTO_EXPOSURE, 1.0);
-    cap.set(cv::CAP_PROP_EXPOSURE, 0.0);
-
     while (true) {
         cv::Mat frame;
         cap >> frame;
@@ -35,4 +32,6 @@ int main() {
             break;
         }
     }
+    cap.release();
+    cv::destroyAllWindows();
 }

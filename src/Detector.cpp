@@ -156,13 +156,38 @@ void BinaryImageProcessor::adjustThreshold(int white_count, int* threshold, int 
 int ArrowProcessor::detectArrowDirection(cv::Mat* frame) const {
     // 使用onnx模型识别箭头
     cv::Mat frame_copy = frame->clone();
+
+    cv::Mat hsv, mask, roi;
+    cv::cvtColor(frame_copy, hsv, cv::COLOR_BGR2HSV);
+    cv::inRange(hsv, cv::Scalar(70, 70, 180), cv::Scalar(140, 255, 255), mask);
+
+    std::vector<std::vector<cv::Point>> contours;
+	cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+	int largestContourIndex = -1;
+	double maxArea = 0;
+	for (size_t i = 0; i < contours.size(); i++) {
+		double area = cv::contourArea(contours[i]);
+		if (area > maxArea) {
+			maxArea = area;
+			largestContourIndex = i;
+		}
+	}
+	if (largestContourIndex != -1) {
+		cv::Rect blueROI = cv::boundingRect(contours[largestContourIndex]);
+        roi = frame_copy(blueROI);
+    }
+
+    cv::Mat gray, binary;
+    cv::cvtColor(roi, gray, cv::COLOR_BGR2GRAY);
+    cv::threshold(gray, binary, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
+
     cv::dnn::Net net = cv::dnn::readNetFromONNX(onnxModelPath);
     if (net.empty()) {
     	Logger::getLogger()->error("无法加载ONNX模型");
     	return -1;
     }
     cv::Mat blob;
-    blob = cv::dnn::blobFromImage(frame_copy, 1 / 255.0, cv::Size(128, 128), cv::Scalar(0, 0, 0), true, false);
+    blob = cv::dnn::blobFromImage(binary, 1 / 255.0, cv::Size(48, 48), cv::Scalar(0, 0, 0));
     net.setInput(blob);
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     cv::Mat outputs = net.forward();
