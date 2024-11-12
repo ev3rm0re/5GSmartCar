@@ -102,7 +102,7 @@ void VideoProcessor::videoProcessing() {
                 servoController.coneDetour(&detectedCone, coneCenter, lane);
             }
         }
-        else {                                      // 锥桶之后进行蓝色区域检测，大于一定阈值进行OCR识别
+        else {                                      // 锥桶之后进行蓝色区域检测，大于一定阈值取roi进行识别
             cv::Mat roi;
             double blueArea = letterClassificator.blueAreaCount(frame, roi);
             Logger::getLogger()->debug("蓝色区域面积: " + std::to_string(blueArea));
