@@ -20,7 +20,7 @@
 
 * 系统: raspios-buster-armhf
 
-软件:
+依赖项:
 
 * opencv
 
